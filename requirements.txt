@@ -1,0 +1,7 @@
+# Add your Python dependencies here, one per line
+# Example:
+# fastapi==0.95.2
+# uvicorn[standard]==0.22.0
+
+fastapi
+uvicorn[standard]
