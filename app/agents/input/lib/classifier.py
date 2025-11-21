@@ -1,30 +1,30 @@
 # the purpose of this file is to do the following: 
 # 1. Define a Classifier class that can classify input data
 # 2. The Classifier should classify data based on hair type, and other relevant features
-from lib.hair_porosity import find_porosity_score
+from .hair_porosity import find_porosity_score
 
 
 def classify_scalp(answer):
     scalp_map = {
-        'oily': {
+        'Oily': {
             "label": "Oily Scalp",
             "directive": "Focus on scalp cleansing, regulate sebum, avoid heavy oils.",
             "product_needs": ["clarifying shampoo", "scalp exfoliant"],
             "routine_flags": ["more_frequent_wash", "lightweight_products"]
         },
-        'dry': {
+        'Dry': {
             "label": "Dry Scalp",
             "directive": "Increase scalp hydration, avoid strong surfactants, use soothing agents.",
             "product_needs": ["soothing ingredients", "humectants"],
             "routine_flags": ["gentle_cleanse", "scalp_serum"]
         },
-        'normal': {
+        'Normal': {
             "label": "Normal Scalp",
             "directive": "Maintain balance with gentle cleansing and lightweight conditioners.",
             "product_needs": ["mild shampoo"],
             "routine_flags": ["standard_cleansing"]
         },
-        'sensitive': {
+        'Sensitive': {
             "label": "Sensitive Scalp",
             "directive": "Avoid fragrance, use hypoallergenic formulas, avoid harsh cleansers.",
             "product_needs": ["fragrance_free", "hypoallergenic"],
