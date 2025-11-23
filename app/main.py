@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
-
-
+from app.api.search import router as search_router  # import your router
 
 app = FastAPI(title="Concierge API")
 
@@ -9,6 +8,5 @@ app = FastAPI(title="Concierge API")
 async def root():
     return {"message": "Hello from FastAPI!"}
 
-@app.get("/agents")
-async def get_agents():
-    return {"agents": ["agent1", "agent2"]}
+
+app.include_router(search_router, prefix="/api")

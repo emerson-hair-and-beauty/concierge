@@ -37,18 +37,14 @@ def query_products(query_text, top_k=5):
     return products
 
 
+# -----------------------------# Example usage
+# if __name__ == "__main__":
+#     user_query = "Best conditioner for dry curly hair"
+#     results = query_products(user_query, top_k=5)
+#     
+#     print(f"\nTop {len(results)} results for query: '{user_query}'\n")
+#     for i, prod in enumerate(results, 1):
+#         print(f"{i}. ID: {prod['id']}")
+#         print(f"   Product Info: {prod['content'][:300]}...")  # show first 300 chars
+#         print()
 # -----------------------------
-# Example usage
-# -----------------------------
-if __name__ == "__main__":
-    user_query = "Best conditioner for dry curly hair"
-    results = query_products(user_query, top_k=5)
-    
-    print(f"\nTop {len(results)} results for query: '{user_query}'\n")
-    for i, prod in enumerate(results, 1):
-        print(f"{i}. ID: {prod['id']}")
-        print(f"   Product Info: {prod['content'][:300]}...")  # show first 300 chars
-        print()
-
-
-query_products("Hydrating shampoo for color-treated hair", top_k=5)

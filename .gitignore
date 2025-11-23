@@ -72,6 +72,14 @@ web_modules/
 .env.*
 !.env.example
 
+# Ignore generated knowledge base and large data files
+app/agents/recommendation/lib/knowledge_base/product_vectors.json
+app/agents/recommendation/lib/knowledge_base/product_kb.json
+app/agents/recommendation/lib/knowledge_base/products_export_1.csv
+
+# Ignore compiled Python files
+*.pyc
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
