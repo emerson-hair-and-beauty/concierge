@@ -9,7 +9,7 @@ load_dotenv()
 # Environment variables
 # -----------------------------
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-INDEX_NAME = os.getenv("PINECONE_INDEX", "developer-quickstart-py")
+INDEX_NAME = os.getenv("PINECONE_INDEX", "concierge-knowledge-base")
 DIMENSION = 384  # must match your embedding model (all-MiniLM-L6-v2)
 
 # -----------------------------

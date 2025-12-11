@@ -11,3 +11,8 @@ google-genai
 
 # dotenv loader for config.py
 python-dotenv
+
+# Additional discovered dependencies
+pydantic
+sentence-transformers
+pinecone-client

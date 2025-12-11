@@ -1,6 +1,6 @@
 import asyncio
 from input.lib.find_advice import collateAdvice
-
+from recommendation.lib.create_recommendations import createRecommendations
 from routine.lib.routine_prompt import generateRoutine
 
 # --------------------
@@ -31,9 +31,9 @@ async def processRoutine(directives, routine_flags):
     print("Routine generation complete:", routine)
     return routine
 
-async def processProductRecommendations(routine, advice):
-    print("Processing product recommendations...")
-    return {"products": ["product1", "product2"]}
+async def processProductRecommendations(routine):
+    products = createRecommendations(routine)
+    return products
 
     
 async def finalizeOutput(routine, products):
@@ -51,9 +51,9 @@ async def orchestrator():
     answers = await receive_input()
     advice = await processInput(answers)
     routine = await processRoutine(advice["directives"],advice["routine_flags"])
-    product_recommendations = await processProductRecommendations(routine, advice)
-    final = await finalizeOutput(routine, product_recommendations)
-    return final
+    final_output = await processProductRecommendations(routine)
+    #print("Product recommendations complete:", final_output)
+    return final_output
 
 
 if __name__ == "__main__":

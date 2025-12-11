@@ -1,8 +1,34 @@
 # query_products.py
-from sentence_transformers import SentenceTransformer
-from app.pinecone_config import index, DIMENSION
 
-# Initialize the embedding model once
+import sys
+import os
+
+# --- MORE ROBUST PATH FIX START ---
+
+# Get the directory of the current file
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Iterate upwards until we find the project root (the directory that contains 'app')
+project_root = current_dir
+while not os.path.exists(os.path.join(project_root, 'app')):
+    # Go up one level
+    parent_dir = os.path.dirname(project_root)
+    if parent_dir == project_root:
+        # We've reached the system root and didn't find 'app'
+        print("Error: Could not find 'app' package root.")
+        # If this happens, your file structure is likely different than assumed.
+        break
+    project_root = parent_dir
+    
+# Add the directory containing 'app' to sys.path
+sys.path.append(project_root)
+
+# --- MORE ROBUST PATH FIX END ---
+
+
+from app.pinecone_config import index, DIMENSION 
+from sentence_transformers import SentenceTransformer
+
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def query_products(query_text, top_k=5):

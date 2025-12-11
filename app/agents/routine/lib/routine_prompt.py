@@ -66,18 +66,15 @@ Return ONLY valid JSON.
     return prompt
 
 async def clean_llm_response(response_text: str, model):
-    
-    cleaned_response = None
-    
-    if (model == "gemini-2.5-pro"):
-        cleaned_response = parse_gemini_response(response_text)
-    return cleaned_response
+      cleaned_response = parse_gemini_response(response_text)
+      return cleaned_response
         
 
 async def generateRoutine(advice: dict) -> dict:
     prompt = routine_prompt(advice)
-    model = "gemini-2.5-pro"
+    model = "gemini-2.5-flash"
     response_text = run_llm_agent(prompt, model)
+    #print("Raw LLM response:", response_text)
     cleaned_response = await clean_llm_response(response_text, model)
     
     return cleaned_response['text']
