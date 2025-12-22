@@ -1,14 +1,11 @@
-# Use PyTorch base image with CUDA support (PyTorch already installed!)
-FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+# Use the existing image which already has heavy dependencies like PyTorch and transformers
+FROM emersonapps/fastapi-app:latest
 
-# Set working directory inside container
+# Set working directory
 WORKDIR /app
 
-# Copy requirements first (for caching)
-COPY requirements.txt .
-
-# Install remaining dependencies (PyTorch already included in base image)
-RUN pip install --no-cache-dir --timeout 1000 -r requirements.txt
+# The existing image already has the models and libs. 
+# We only copy the latest code updates here.
 
 # Copy the app code
 COPY app/ ./app
