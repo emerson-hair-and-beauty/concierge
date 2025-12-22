@@ -1,4 +1,4 @@
-from llm_call.llm_call import run_llm_agent
+from app.agents.llm_call.llm_call import run_llm_agent
 from .save_response import parse_gemini_response
 import json
 

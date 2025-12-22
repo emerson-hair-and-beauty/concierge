@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 
-load_dotenv() 
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 # -----------------------------
 # Environment variables

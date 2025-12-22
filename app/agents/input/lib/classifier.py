@@ -105,7 +105,6 @@ def classify_texture(answer):
         "routine_flags": []
     })
 
-
 def classify_density(answer):
     density_map = {
         'Thin': {

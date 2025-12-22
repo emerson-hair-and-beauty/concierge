@@ -1,20 +1,15 @@
 import asyncio
-from input.lib.find_advice import collateAdvice
-from recommendation.lib.create_recommendations import createRecommendations
-from routine.lib.routine_prompt import generateRoutine
+from app.agents.input.lib.find_advice import collateAdvice
+from app.agents.recommendation.lib.create_recommendations import createRecommendations
+from app.agents.routine.lib.routine_prompt import generateRoutine
+from app.api.models import OrchestratorInput
 
 # --------------------
 # Agent Functions
 # --------------------
 
-async def receive_input():
-    return {
-        "porosity": "Medium Porosity",
-        "scalp": "Oily",
-        "damage": "Yes",
-        "density": "Medium",
-        "texture": "Curly"
-    }
+async def receive_input(answers: OrchestratorInput):
+    return answers.model_dump()
     
 
 async def processInput(answers):
@@ -28,7 +23,7 @@ async def processRoutine(directives, routine_flags):
     print(step_description)
     advice = {"directives": directives, "routine_flags": routine_flags}
     routine = await generateRoutine(advice)
-    print("Routine generation complete:", routine)
+    #print("Routine generation complete:", routine)
     return routine
 
 async def processProductRecommendations(routine):
@@ -47,12 +42,12 @@ async def finalizeOutput(routine, products):
 # Orchestrator function
 # --------------------
 
-async def orchestrator():
-    answers = await receive_input()
-    advice = await processInput(answers)
+async def orchestrator(answers: OrchestratorInput):
+    answers_dict = await receive_input(answers)
+    advice = await processInput(answers_dict)
     routine = await processRoutine(advice["directives"],advice["routine_flags"])
     final_output = await processProductRecommendations(routine)
-    #print("Product recommendations complete:", final_output)
+    print("Product recommendations complete:", final_output)
     return final_output
 
 
