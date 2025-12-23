@@ -1,7 +1,6 @@
 # the purpose of this file is to do the following: 
 # 1. Define a Classifier class that can classify input data
 # 2. The Classifier should classify data based on hair type, and other relevant features
-from .hair_porosity import find_porosity_score
 
 
 def classify_scalp(answer):
@@ -40,8 +39,9 @@ def classify_scalp(answer):
     })
 
 def classify_porosity(answer):
-    porosity = find_porosity_score(answer)
-
+    # Client now sends porosity as a string (e.g., "Medium Porosity")
+    # No need to calculate it from quiz answers anymore
+    
     porosity_map = {
         'Low Porosity': {
             "label": "Low Porosity",
@@ -63,7 +63,7 @@ def classify_porosity(answer):
         }
     }
 
-    return porosity_map.get(porosity, {
+    return porosity_map.get(answer, {
         "label": "Unknown Porosity",
         "directive": "No directive available.",
         "product_needs": [],
