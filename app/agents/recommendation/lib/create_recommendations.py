@@ -14,10 +14,9 @@ def parseRoutineStep(step: dict) -> str:
    return step_info
 
 
-def createRecommendations(routine: dict) -> list:
+async def createRecommendations(routine: dict):
     
     routine_steps = routine.get("routine", [])
-    updated_routine = []
     
     for step in routine_steps:
         step_instructions = parseRoutineStep(step)
@@ -30,7 +29,6 @@ def createRecommendations(routine: dict) -> list:
             "products": products,
             "notes": step.get('notes')
         }
-        updated_routine.append(updated_step)
-    return updated_routine
+        yield updated_step
 
    

@@ -15,10 +15,37 @@ except Exception:
     from app.config import GEMINI_API_KEY
 
 
-def run_llm_agent(prompt: str, model: str) -> str:
+async def run_llm_agent(prompt: str, model: str):
     client = genai.Client(api_key=GEMINI_API_KEY)
-    response = client.models.generate_content(
+    
+    async for chunk in await client.aio.models.generate_content_stream(
         model=model,
         contents=prompt,
-    )
-    return response
+        config={
+            "thinking_config": {
+                "include_thoughts": True,
+                "thinking_budget": 1024
+            }
+        }
+    ):
+        # Extract thinking if available in the parts
+        has_thought_in_chunk = False
+        if chunk.candidates and chunk.candidates[0].content.parts:
+            for part in chunk.candidates[0].content.parts:
+                thought_value = getattr(part, 'thought', None)
+                if thought_value:
+                    # If thought_value is a string, it's the reasoning
+                    if isinstance(thought_value, str):
+                        yield {"type": "thought", "content": thought_value}
+                        has_thought_in_chunk = True
+                    # If thought_value is True, reasoning is in the part's text
+                    elif thought_value is True:
+                        reasoning = getattr(part, 'text', '')
+                        if reasoning:
+                            yield {"type": "thought", "content": reasoning}
+                            has_thought_in_chunk = True
+        
+        # Extract regular text content
+        # We only yield as "content" if it wasn't already identified as "thought"
+        if chunk.text and not has_thought_in_chunk:
+            yield {"type": "content", "content": chunk.text}

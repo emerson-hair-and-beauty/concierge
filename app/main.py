@@ -12,7 +12,11 @@ app.include_router(orchestrator_router, prefix="/orchestrator")
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from FastAPI!"}
+    return {"message": "Hello from FastAPI!", "status": "active"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "concierge-api"}
 
 # Add this startup event to list all active routes in your terminal
 @app.on_event("startup")

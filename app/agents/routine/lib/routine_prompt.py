@@ -70,11 +70,17 @@ async def clean_llm_response(response_text: str, model):
       return cleaned_response
         
 
-async def generateRoutine(advice: dict) -> dict:
+async def generateRoutine(advice: dict):
     prompt = routine_prompt(advice)
-    model = "gemini-2.5-flash"
-    response_text = run_llm_agent(prompt, model)
-    #print("Raw LLM response:", response_text)
-    cleaned_response = await clean_llm_response(response_text, model)
+    model = "gemini-2.5-flash-lite"
     
-    return cleaned_response['text']
+    full_text = ""
+    async for chunk in run_llm_agent(prompt, model):
+        yield chunk
+        if chunk["type"] == "content":
+            full_text += chunk["content"]
+    
+    # We don't return here anymore, we yield chunks. 
+    # The caller (orchestrator) will need the final full_text to parse JSON and proceed.
+    # We can yield a special chunk at the end or the caller can accumulate.
+    # To keep it simple, after the loop finishes, the caller has the full text if they accumulated it.

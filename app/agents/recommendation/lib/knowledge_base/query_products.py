@@ -26,22 +26,25 @@ sys.path.append(project_root)
 # --- MORE ROBUST PATH FIX END ---
 
 
-from app.pinecone_config import index, DIMENSION 
+from app.pinecone_config import get_pinecone_index
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _model
 
 def query_products(query_text, top_k=5):
     """
     Query Pinecone index for top_k most relevant products.
-    
-    Args:
-        query_text (str): The user's natural language query.
-        top_k (int): Number of results to return.
-    
-    Returns:
-        List of dicts with 'id' and 'content'.
     """
+    # Initialize index and model only when needed
+    index = get_pinecone_index()
+    model = get_model()
+    
     # 1️⃣ Encode query
     query_vector = model.encode(query_text).tolist()
     
