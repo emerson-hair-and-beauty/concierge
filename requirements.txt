@@ -14,5 +14,4 @@ python-dotenv
 
 # Additional discovered dependencies
 pydantic
-sentence-transformers
 pinecone

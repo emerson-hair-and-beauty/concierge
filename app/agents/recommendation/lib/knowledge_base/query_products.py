@@ -27,28 +27,26 @@ sys.path.append(project_root)
 
 
 from app.pinecone_config import get_pinecone_index
-from sentence_transformers import SentenceTransformer
-
-_model = None
-
-def get_model():
-    global _model
-    if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _model
+from app.config import GEMINI_API_KEY
+from google import genai
 
 def query_products(query_text, top_k=5):
     """
     Query Pinecone index for top_k most relevant products.
     """
-    # Initialize index and model only when needed
-    index = get_pinecone_index()
-    model = get_model()
-    
-    # 1️⃣ Encode query
-    query_vector = model.encode(query_text).tolist()
-    
+    # 1️⃣ Encode query using Gemini API
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    response = client.models.embed_content(
+        model="text-embedding-004",
+        contents=query_text,
+        config={
+            "output_dimensionality": 384
+        }
+    )
+    query_vector = response.embeddings[0].values
+
     # 2️⃣ Query Pinecone
+    index = get_pinecone_index()
     result = index.query(
         vector=query_vector,
         top_k=top_k,
