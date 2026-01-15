@@ -28,24 +28,36 @@ async def run_llm_agent(prompt: str, model: str):
             }
         }
     ):
-        # Extract thinking if available in the parts
-        has_thought_in_chunk = False
-        if chunk.candidates and chunk.candidates[0].content.parts:
-            for part in chunk.candidates[0].content.parts:
-                thought_value = getattr(part, 'thought', None)
-                if thought_value:
-                    # If thought_value is a string, it's the reasoning
-                    if isinstance(thought_value, str):
-                        yield {"type": "thought", "content": thought_value}
-                        has_thought_in_chunk = True
-                    # If thought_value is True, reasoning is in the part's text
-                    elif thought_value is True:
-                        reasoning = getattr(part, 'text', '')
-                        if reasoning:
-                            yield {"type": "thought", "content": reasoning}
-                            has_thought_in_chunk = True
-        
-        # Extract regular text content
-        # We only yield as "content" if it wasn't already identified as "thought"
-        if chunk.text and not has_thought_in_chunk:
-            yield {"type": "content", "content": chunk.text}
+        # A chunk can have multiple candidates, each with multiple parts
+        if chunk.candidates:
+            for candidate in chunk.candidates:
+                if candidate.content and candidate.content.parts:
+                    for part in candidate.content.parts:
+                        # 1. Handle Thinking/Thoughts
+                        thought_value = getattr(part, 'thought', None)
+                        if thought_value:
+                            if isinstance(thought_value, str):
+                                yield {"type": "thought", "content": thought_value}
+                            elif thought_value is True:
+                                reasoning = getattr(part, 'text', '')
+                                if reasoning:
+                                    yield {"type": "thought", "content": reasoning}
+                            continue # Successfully handled as thought, skip to next part
+                        
+                        # 2. Handle final text content
+                        text_value = getattr(part, 'text', '')
+                        if text_value:
+                            yield {"type": "content", "content": text_value}
+                            
+        # 3. Handle Token Usage
+        if chunk.usage_metadata:
+             yield {
+                "type": "token_usage",
+                "source": "routine_generation",
+                "model": model,
+                "usage": {
+                    "prompt_tokens": chunk.usage_metadata.prompt_token_count or 0,
+                    "completion_tokens": chunk.usage_metadata.candidates_token_count or 0,
+                    "total_tokens": chunk.usage_metadata.total_token_count or 0
+                }
+            }

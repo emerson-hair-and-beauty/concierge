@@ -30,28 +30,46 @@ from app.pinecone_config import get_pinecone_index
 from app.config import GEMINI_API_KEY
 from google import genai
 
-def query_products(query_text, top_k=5):
+async def query_products(query_text, top_k=5):
     """
     Query Pinecone index for top_k most relevant products.
     """
-    # 1️⃣ Encode query using Gemini API
+    print(f"--> Quering products for: {query_text[:50]}...")
+    # 1️⃣ Encode query using Gemini API (Async)
     client = genai.Client(api_key=GEMINI_API_KEY)
-    response = client.models.embed_content(
-        model="text-embedding-004",
-        contents=query_text,
-        config={
-            "output_dimensionality": 384
-        }
-    )
-    query_vector = response.embeddings[0].values
+    try:
+        response = await client.aio.models.embed_content(
+            model="text-embedding-004",
+            contents=query_text,
+            config={
+                "output_dimensionality": 384
+            }
+        )
+        print(f"DEBUG: Response object: {response}")
+        # print(f"DEBUG: Response keys/dir: {dir(response)}")
+        if hasattr(response, 'usage_metadata'):
+             print(f"DEBUG: usage_metadata: {response.usage_metadata}")
+             
+        query_vector = response.embeddings[0].values
+        print(f"--> Embedding generated, size: {len(query_vector)}")
+    except Exception as e:
+        print(f"ERROR in embed_content: {str(e)}")
+        raise e
 
-    # 2️⃣ Query Pinecone
-    index = get_pinecone_index()
-    result = index.query(
-        vector=query_vector,
-        top_k=top_k,
-        include_metadata=True
-    )
+    # 2️⃣ Query Pinecone (Sync call in Thread)
+    try:
+        index = get_pinecone_index()
+        import asyncio
+        result = await asyncio.to_thread(
+            index.query,
+            vector=query_vector,
+            top_k=top_k,
+            include_metadata=True
+        )
+        print(f"--> Pinecone query successful, matches: {len(result.matches)}")
+    except Exception as e:
+        print(f"ERROR in pinecone query: {str(e)}")
+        raise e
     
     # 3️⃣ Format results
     products = []
@@ -61,7 +79,23 @@ def query_products(query_text, top_k=5):
             "content": match.metadata.get("content", "")
         })
     
-    return products
+    # Extract usage if available
+    embedding_usage = {
+        "model": "text-embedding-004",
+        "usage": {
+            "prompt_tokens": 0,
+            "total_tokens": 0
+        }
+    }
+    
+    if response and hasattr(response, 'usage_metadata') and response.usage_metadata:
+        embedding_usage["usage"]["prompt_tokens"] = response.usage_metadata.prompt_token_count
+        embedding_usage["usage"]["total_tokens"] = response.usage_metadata.total_token_count
+
+    return {
+        "products": products,
+        "embedding_usage": embedding_usage
+    }
 
 
 # -----------------------------# Example usage

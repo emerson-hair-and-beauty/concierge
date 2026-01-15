@@ -20,8 +20,13 @@ async def createRecommendations(routine: dict):
     
     for step in routine_steps:
         step_instructions = parseRoutineStep(step)
-        products = query_products(step_instructions)
+        products_data = await query_products(step_instructions)
+        products = products_data.get("products", [])
+        usage = products_data.get("embedding_usage")
         
+        if usage:
+            yield {"type": "embedding_usage", "content": usage}
+
         updated_step = {
             "step": step.get('step'),
             "action": step.get('action'),
@@ -29,6 +34,6 @@ async def createRecommendations(routine: dict):
             "products": products,
             "notes": step.get('notes')
         }
-        yield updated_step
+        yield {"type": "step", "content": updated_step}
 
    
