@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.api.search import router as search_router
 from app.api.orchestrator import router as orchestrator_router
+from app.api.chat import router as chat_router
 
 app = FastAPI(title="Concierge API")
 
@@ -9,6 +10,7 @@ app = FastAPI(title="Concierge API")
 
 app.include_router(search_router, prefix="/search")
 app.include_router(orchestrator_router, prefix="/orchestrator")
+app.include_router(chat_router, prefix="/api")
 
 @app.get("/")
 async def root():

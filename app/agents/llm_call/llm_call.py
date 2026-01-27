@@ -18,15 +18,18 @@ except Exception:
 async def run_llm_agent(prompt: str, model: str):
     client = genai.Client(api_key=GEMINI_API_KEY)
     
+    # Prepare config based on model
+    generation_config = {}
+    if "thinking" in model:
+        generation_config["thinking_config"] = {
+            "include_thoughts": True,
+            "thinking_budget": 1024
+        }
+
     async for chunk in await client.aio.models.generate_content_stream(
         model=model,
         contents=prompt,
-        config={
-            "thinking_config": {
-                "include_thoughts": True,
-                "thinking_budget": 1024
-            }
-        }
+        config=generation_config
     ):
         # A chunk can have multiple candidates, each with multiple parts
         if chunk.candidates:
