@@ -55,6 +55,10 @@ class ChatResponse(BaseModel):
     handoff: bool = Field(default=False, description="True if ready for slider input")
     target_vital: Optional[str] = Field(None, description="Which vital to collect: moisture|definition|scalp|breakage")
     session_id: str
+    
+    # Backend-generated diagnostic data (populated only when handoff is True)
+    summary: Optional[str] = Field(None, description="Dense diagnostic summary of the chat")
+    keywords: List[str] = Field(default_factory=list, description="Extracted technical hair terms")
 
 class SaveEventRequest(BaseModel):
     """Input schema for POST /api/event"""
@@ -62,7 +66,7 @@ class SaveEventRequest(BaseModel):
     session_id: str
     target_vital: str  # moisture|definition|scalp|breakage
     vital_value: int = Field(..., ge=1, le=10)
-    conversation_summary: str
+    conversation_summary: Optional[str] = None
     keywords: List[str] = Field(default_factory=list)
     wash_day_number: Optional[int] = None
     day_in_cycle: Optional[int] = None

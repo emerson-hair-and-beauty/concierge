@@ -50,15 +50,32 @@ async def chat_endpoint(request: ChatRequest):
         print(f"[DEBUG] Agent response: {response_message[:100]}...")
         print(f"[DEBUG] Handoff: {handoff}, Target: {target_vital}")
         
-        # 4. Save the assistant's response to history
+        # 4. If handoff detected, run auto-summarization
+        summary = None
+        keywords = []
+        if handoff:
+            from app.agents.summarizer import summarize_diagnostic
+            print(f"[DEBUG] Handoff detected. Running summarizer...")
+            # Include the current exchange in the summary context
+            full_context = history + [
+                {"role": "user", "message": request.message},
+                {"role": "assistant", "message": response_message}
+            ]
+            summary, keywords = await summarize_diagnostic(full_context)
+            print(f"[DEBUG] Auto-summary: {summary}")
+            print(f"[DEBUG] Keywords: {keywords}")
+        
+        # 5. Save the assistant's response to history
         db.append_chat_message(request.session_id, "assistant", response_message)
         
-        # 5. Return the response
+        # 6. Return the response
         return ChatResponse(
             message=response_message,
             handoff=handoff,
             target_vital=target_vital,
-            session_id=request.session_id
+            session_id=request.session_id,
+            summary=summary,
+            keywords=keywords
         )
         
     except Exception as e:

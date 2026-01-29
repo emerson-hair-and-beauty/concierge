@@ -75,6 +75,9 @@ async def test_vertical_slice():
             print("CHECKPOINT DETECTED - Saving Event")
             print("=" * 60)
             
+            print(f"Backend Summary: {data.get('summary')}")
+            print(f"Backend Keywords: {', '.join(data.get('keywords', []))}")
+            
             # Step 4: User provides slider value
             slider_value = 7  # User rates breakage as 7/10
             print(f"\n[4] User sets {data['target_vital']} slider to: {slider_value}/10")
@@ -86,8 +89,8 @@ async def test_vertical_slice():
                     "session_id": session_id,
                     "target_vital": data['target_vital'],
                     "vital_value": slider_value,
-                    "conversation_summary": "User experiencing hair breakage when brushing, day 5 of wash cycle",
-                    "keywords": ["breakage", "snapping", "brushing", "day 5"],
+                    "conversation_summary": data.get('summary'), # Use backend summary
+                    "keywords": data.get('keywords'),           # Use backend keywords
                     "wash_day_number": 5,
                     "day_in_cycle": 5
                 }
