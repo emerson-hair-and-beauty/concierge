@@ -160,10 +160,14 @@ async def save_event_endpoint(request: SaveEventRequest):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[ERROR] Chat endpoint failed: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Event save failed: {str(e)}"
+            detail=f"Chat processing failed: {str(e)}"
         )
+
 
 
 @router.get("/events/{user_id}")
