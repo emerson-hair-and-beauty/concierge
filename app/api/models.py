@@ -13,6 +13,7 @@ class OrchestratorInput(BaseModel):
     damage: str
     density: str
     texture: str
+    user_id: Optional[str] = None # Added for routine persistence
 
 # ============================================
 # Empath Diagnostic Engine Models
@@ -39,6 +40,9 @@ class HairEvent(BaseModel):
     # Unstructured data
     conversation_summary: str = Field(..., description="Dense diagnostic summary of the chat")
     keywords: List[str] = Field(default_factory=list, description="Extracted technical hair terms")
+    
+    # Categorization (for Librarian LTM)
+    primary_label: Optional[str] = Field(None, description="Event category (e.g., MOISTURE, SCALP, DEFINITION, BREAKAGE)")
     
     # Metadata
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())

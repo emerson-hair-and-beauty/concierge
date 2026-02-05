@@ -12,6 +12,7 @@ from app.api.models import (
     VitalsPayload
 )
 from app.services.db_service import get_db
+from app.services.librarian_service import get_librarian
 from app.agents.empath_diagnostic import diagnose_hair_concern
 
 router = APIRouter(tags=["chat"])
@@ -33,19 +34,26 @@ async def chat_endpoint(request: ChatRequest):
     try:
         db = get_db()
         
-        # 1. Retrieve conversation history (last 5 messages)
-        history = db.get_chat_history(request.session_id, limit=5)
+        # 1. Retrieve conversation history (last 10 messages)
+        history = db.get_chat_history(request.session_id, limit=10)
         print(f"[DEBUG] Retrieved history: {len(history)} messages")
         
         # 2. Save the user's message to history
-        db.append_chat_message(request.session_id, "user", request.message)
+        db.append_chat_message(request.session_id, "user", request.message, user_id=request.user_id)
         print(f"[DEBUG] Saved user message: {request.message}")
         
-        # 3. Run the diagnostic agent
-        print(f"[DEBUG] Running diagnostic agent...")
+        # 3. Fetch past events from Librarian for context
+        librarian = get_librarian()
+        past_events = librarian.get_recent_events(request.user_id, limit=5)
+        past_context = librarian.format_context_for_prompt(past_events)
+        print(f"[DEBUG] Retrieved {len(past_events)} past events for context")
+        
+        # 4. Run the diagnostic agent with past context
+        print(f"[DEBUG] Running diagnostic agent with Librarian context...")
         response_message, handoff, target_vital = await diagnose_hair_concern(
             history=history,
-            current_message=request.message
+            current_message=request.message,
+            past_context=past_context
         )
         print(f"[DEBUG] Agent response: {response_message[:100]}...")
         print(f"[DEBUG] Handoff: {handoff}, Target: {target_vital}")
@@ -66,7 +74,7 @@ async def chat_endpoint(request: ChatRequest):
             print(f"[DEBUG] Keywords: {keywords}")
         
         # 5. Save the assistant's response to history
-        db.append_chat_message(request.session_id, "assistant", response_message)
+        db.append_chat_message(request.session_id, "assistant", response_message, user_id=request.user_id)
         
         # 6. Return the response
         return ChatResponse(
@@ -103,6 +111,11 @@ async def save_event_endpoint(request: SaveEventRequest):
     """
     try:
         db = get_db()
+        librarian = get_librarian()
+        
+        # Categorize the event using Librarian
+        primary_label = librarian.categorize_vital(request.target_vital)
+        print(f"[DEBUG] Categorized event as: {primary_label}")
         
         # Build the vitals payload based on which vital was diagnosed
         vitals = VitalsPayload()
@@ -122,7 +135,7 @@ async def save_event_endpoint(request: SaveEventRequest):
                 detail=f"Invalid target_vital: {request.target_vital}. Must be one of: moisture, definition, scalp, breakage"
             )
         
-        # Create the HairEvent
+        # Create the HairEvent with category
         event = HairEvent(
             user_id=request.user_id,
             session_id=request.session_id,
@@ -130,11 +143,17 @@ async def save_event_endpoint(request: SaveEventRequest):
             day_in_cycle=request.day_in_cycle,
             vitals_payload=vitals,
             conversation_summary=request.conversation_summary,
-            keywords=request.keywords
+            keywords=request.keywords,
+            primary_label=primary_label  # Add category label
         )
         
         # Save to database
         saved_event = db.save_hair_event(event)
+        print(f"[DEBUG] Saved event with ID: {saved_event.id}, Category: {primary_label}")
+        
+        # Clean up chat session - it's now captured in the event summary
+        db.delete_chat_session(request.session_id)
+        print(f"[DEBUG] Cleaned up chat session {request.session_id}")
         
         return saved_event
         

@@ -13,7 +13,7 @@ class EmpathDiagnosticAgent:
     The "Empath Brain" - Optimized for high-confidence diagnosis and low token usage.
     """
     
-    SYSTEM_PROMPT = """You are a Luxury Hair Concierge Empath. 
+    SYSTEM_PROMPT = """You are a Luxury Hair Concierge Empath with Long-Term Memory.
 Goal: Reach 90% confidence in ONE category (MOISTURE, DEFINITION, SCALP, BREAKAGE).
 
 DIAGNOSTIC CRITERIA:
@@ -27,11 +27,12 @@ CONSTRAINTS:
 - Ask ONLY one question at a time.
 - If Wash Day is > 7, reassure the user that shedding is normal accumulation.
 - DO NOT repeat questions found in the history.
+- REFERENCE PAST EVENTS when relevant (e.g., "I remember your scalp was itchy 2 weeks ago...")
 - VERIFY: Summarize "Symptom + Wash Day" and ask for confirmation before handoff.
 - HANDOFF: Output [CHECKPOINT: CATEGORY] only after user confirms your summary.
 """
 
-    def __init__(self, model: str = "gemini-2.0-flash-lite"):
+    def __init__(self, model: str = "gemini-2.5-flash-lite"):
         self.model = model
     
     def _is_temporal_known(self, history: List[Dict[str, str]], current_message: str) -> bool:
@@ -40,8 +41,8 @@ CONSTRAINTS:
         full_text = " ".join([m.get("message", "") for m in history] + [current_message]).lower()
         return any(re.search(marker, full_text) for marker in temporal_markers)
 
-    def _build_prompt(self, history: List[Dict[str, str]], current_message: str) -> str:
-        """Assembles the prompt with a hidden 'Instruction Guard' to prevent loops."""
+    def _build_prompt(self, history: List[Dict[str, str]], current_message: str, past_context: str = None) -> str:
+        """Assembles the prompt with past context and 'Instruction Guard' to prevent loops."""
         
         # Check if we already know the wash day to prevent the LLM from asking again
         temporal_known = self._is_temporal_known(history, current_message)
@@ -53,9 +54,14 @@ CONSTRAINTS:
 
         prompt_parts = [
             self.SYSTEM_PROMPT,
-            guard_rail,
-            "\nCONVERSATION HISTORY:"
+            guard_rail
         ]
+        
+        # Inject past context from Librarian if available
+        if past_context:
+            prompt_parts.append(f"\n{past_context}\n")
+        
+        prompt_parts.append("\nCONVERSATION HISTORY:")
         
         if not history:
             prompt_parts.append("(New Conversation)")
@@ -72,10 +78,11 @@ CONSTRAINTS:
     async def run_diagnostic(
         self, 
         history: List[Dict[str, str]], 
-        current_message: str
+        current_message: str,
+        past_context: str = None
     ) -> str:
-        """Calls the LLM and streams the response."""
-        conversation = self._build_prompt(history, current_message)
+        """Calls the LLM and streams the response with past context."""
+        conversation = self._build_prompt(history, current_message, past_context)
         
         full_response = ""
         async for chunk in run_llm_agent(conversation, self.model):
@@ -108,9 +115,10 @@ CONSTRAINTS:
 async def diagnose_hair_concern(
     history: List[Dict[str, str]], 
     current_message: str,
-    model: str = "gemini-2.0-flash-lite"
+    past_context: str = None,
+    model: str = "gemini-2.5-flash-lite"
 ) -> Tuple[str, bool, Optional[str]]:
-    """Convenience function to run the diagnostic loop."""
+    """Convenience function to run the diagnostic loop with optional past context."""
     agent = EmpathDiagnosticAgent(model=model)
-    response = await agent.run_diagnostic(history, current_message)
+    response = await agent.run_diagnostic(history, current_message, past_context)
     return agent.parse_response(response)

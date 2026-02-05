@@ -11,7 +11,7 @@ def test_minimal():
     client = genai.Client(api_key=GEMINI_API_KEY)
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash-lite",
+            model="gemini-2.5-flash-lite",
             contents="Hello, say 'Test successful' if you receive this."
         )
         print(f"RESPONSE: {response.text}", flush=True)

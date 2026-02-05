@@ -25,7 +25,7 @@ CONSTRAINTS:
 - If Wash Day or Day in Cycle was mentioned, include it.
 """
 
-    def __init__(self, model: str = "gemini-2.0-flash-lite"):
+    def __init__(self, model: str = "gemini-2.5-flash-lite"):
         self.model = model
 
     def _build_prompt(self, history: List[Dict[str, str]]) -> str:
@@ -73,7 +73,7 @@ CONSTRAINTS:
         
         return summary, keywords
 
-async def summarize_diagnostic(history: List[Dict[str, str]], model: str = "gemini-2.0-flash-lite") -> Tuple[str, List[str]]:
+async def summarize_diagnostic(history: List[Dict[str, str]], model: str = "gemini-2.5-flash-lite") -> Tuple[str, List[str]]:
     """Helper function to run the summarizer."""
     summarizer = EmpathSummarizer(model=model)
     return await summarizer.summarize(history)

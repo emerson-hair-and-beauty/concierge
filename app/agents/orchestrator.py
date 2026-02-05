@@ -77,7 +77,13 @@ async def orchestrator(answers: OrchestratorInput):
             yield json.dumps({"type": "error", "content": f"Failed to parse routine: {str(e)}", "raw": cleaned_text}) + "\n"
             return
 
+        
+        # Accumulate the final routine structure with products
+        final_routine_for_db = routine_json.copy()
+        final_routine_for_db["routine"] = [] # Reset steps to populate with full product info
+        
         yield json.dumps({"type": "status", "content": "Creating product recommendations..."}) + "\n"
+        
         async for recommendation_chunk in processProductRecommendations(routine_json):
             # Handle embedding usage
             if recommendation_chunk.get("type") == "embedding_usage":
@@ -89,7 +95,22 @@ async def orchestrator(answers: OrchestratorInput):
             
             # Handle actual product steps
             if recommendation_chunk.get("type") == "step":
-                yield json.dumps({"type": "product_recommendation", "content": recommendation_chunk["content"]}) + "\n"
+                step_content = recommendation_chunk["content"]
+                # Add to DB object
+                final_routine_for_db["routine"].append(step_content)
+                # Stream to client
+                yield json.dumps({"type": "product_recommendation", "content": step_content}) + "\n"
+        
+        # Save complete routine to Supabase if user_id is present
+        if answers.user_id:
+            try:
+                from app.services.db_service import get_db
+                db = get_db()
+                db.save_routine(answers.user_id, final_routine_for_db)
+                yield json.dumps({"type": "status", "content": "Routine saved to your profile!"}) + "\n"
+            except Exception as e:
+                print(f"Failed to save routine: {e}")
+                yield json.dumps({"type": "error", "content": "Failed to save routine to profile"}) + "\n"
         
         yield json.dumps({"type": "status", "content": "All recommendations complete!"}) + "\n"
 
