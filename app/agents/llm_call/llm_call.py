@@ -15,63 +15,60 @@ except Exception:
     from app.config import GEMINI_API_KEY
 
 
-async def run_llm_agent(prompt: str, model: str, max_retries: int = 3):
+# Fallback model pool to handle rate limits and availability
+MODEL_POOL = [
+    "gemini-2.5-flash-lite", 
+    "gemini-2.0-flash-lite"
+]
+
+async def run_llm_agent(prompt: str, model: str = None, max_retries: int = 5):
     """
-    Run LLM agent with automatic retry logic for rate limiting.
-    
-    Args:
-        prompt: The prompt to send to the LLM
-        model: The model name (e.g., 'gemini-2.5-flash-lite')
-        max_retries: Maximum number of retry attempts (default: 3)
+    Run LLM agent with automatic retry and model fallback logic.
     """
     import asyncio
     from google.genai.errors import ClientError
     
+    # Use provided model or default to first in pool
+    current_model = model if model else MODEL_POOL[0]
     client = genai.Client(api_key=GEMINI_API_KEY)
     
-    # Prepare config based on model
-    generation_config = {}
-    if "thinking" in model:
-        generation_config["thinking_config"] = {
-            "include_thoughts": True,
-            "thinking_budget": 1024
-        }
-    
     retry_count = 0
+    model_index = 0
+    
     while retry_count <= max_retries:
         try:
+            # Prepare config based on model
+            generation_config = {}
+            if current_model and "thinking" in current_model:
+                generation_config["thinking_config"] = {
+                    "include_thoughts": True,
+                    "thinking_budget": 1024
+                }
+            
             async for chunk in await client.aio.models.generate_content_stream(
-                model=model,
+                model=current_model,
                 contents=prompt,
                 config=generation_config
             ):
-                # A chunk can have multiple candidates, each with multiple parts
                 if chunk.candidates:
                     for candidate in chunk.candidates:
                         if candidate.content and candidate.content.parts:
                             for part in candidate.content.parts:
-                                # 1. Handle Thinking/Thoughts
+                                # Handle Thinking/Thoughts
                                 thought_value = getattr(part, 'thought', None)
                                 if thought_value:
-                                    if isinstance(thought_value, str):
-                                        yield {"type": "thought", "content": thought_value}
-                                    elif thought_value is True:
-                                        reasoning = getattr(part, 'text', '')
-                                        if reasoning:
-                                            yield {"type": "thought", "content": reasoning}
-                                    continue # Successfully handled as thought, skip to next part
+                                    yield {"type": "thought", "content": str(thought_value)}
+                                    continue
                                 
-                                # 2. Handle final text content
+                                # Handle final text content
                                 text_value = getattr(part, 'text', '')
                                 if text_value:
                                     yield {"type": "content", "content": text_value}
                                     
-                # 3. Handle Token Usage
                 if chunk.usage_metadata:
                      yield {
                         "type": "token_usage",
-                        "source": "routine_generation",
-                        "model": model,
+                        "model": current_model,
                         "usage": {
                             "prompt_tokens": chunk.usage_metadata.prompt_token_count or 0,
                             "completion_tokens": chunk.usage_metadata.candidates_token_count or 0,
@@ -79,30 +76,27 @@ async def run_llm_agent(prompt: str, model: str, max_retries: int = 3):
                         }
                     }
             
-            # If we successfully completed, break out of retry loop
+            # Success!
             break
             
         except ClientError as e:
-            # Check if it's a rate limit error
-            error_str = str(e)
-            if "retryDelay" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+            error_str = str(e).upper()
+            is_rate_limit = "RESOURCE_EXHAUSTED" in error_str or "429" in error_str
+            is_invalid_model = "NOT_FOUND" in error_str or "INVALID_ARGUMENT" in error_str
+            
+            if is_rate_limit or is_invalid_model:
                 retry_count += 1
                 if retry_count > max_retries:
-                    print(f"[LLM ERROR] Max retries ({max_retries}) exceeded. Rate limit still active.")
                     raise e
                 
-                # Extract retry delay from error (default to exponential backoff)
-                import re
-                delay_match = re.search(r"'retryDelay':\s*'(\d+)s'", error_str)
-                if delay_match:
-                    delay = int(delay_match.group(1))
-                else:
-                    # Exponential backoff: 2^retry_count seconds
-                    delay = 2 ** retry_count
+                # Model Fallback: Switch to next model in pool
+                model_index = (model_index + 1) % len(MODEL_POOL)
+                old_model = current_model
+                current_model = MODEL_POOL[model_index]
                 
-                print(f"[LLM] Rate limited. Waiting {delay}s before retry {retry_count}/{max_retries}...")
+                delay = 2 ** retry_count # Exponential backoff
+                print(f"[LLM] Error with {old_model}. Switching to {current_model}. Waiting {delay}s...")
                 await asyncio.sleep(delay)
             else:
-                # Not a rate limit error, re-raise
                 raise e
 
