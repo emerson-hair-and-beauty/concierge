@@ -56,20 +56,44 @@ CRITICAL RULES:
         full_text = " ".join([m.get("message", "") for m in history] + [current_message]).lower()
         return any(re.search(marker, full_text) for marker in temporal_markers)
 
+    def _count_questions(self, history: List[Dict[str, str]]) -> int:
+        """Counts how many diagnostic questions the assistant has asked."""
+        count = 0
+        for msg in history:
+            if msg["role"] == "assistant":
+                # A question is any message that ends with or contains a '?' 
+                # and isn't the permission request itself.
+                text = msg["message"]
+                if "?" in text and "May I ask a few more details" not in text:
+                    count += 1
+        return count
+
     def _build_prompt(self, history: List[Dict[str, str]], current_message: str, past_context: str = None) -> str:
-        """Assembles the prompt with past context and 'Instruction Guard' to prevent loops."""
+        """Assembles the prompt with past context and trackers."""
         
-        # Check if we already know the wash day to prevent the LLM from asking again
+        # 1. Check temporal context
         temporal_known = self._is_temporal_known(history, current_message)
-        guard_rail = ""
+        
+        # 2. Count questions asked so far
+        question_count = self._count_questions(history)
+        
+        # 3. Build Guard Rails
+        guard_rails = []
+        
+        # Question counting guard rail
+        guard_rails.append(f"[SYSTEM NOTE: You have already asked {question_count} diagnostic questions.]")
+        if question_count >= 2:
+            guard_rails.append("[CRITICAL: You MUST ask permission now. Use the exact phrase specified in Rule 1.]")
+        
+        # Temporal guard rail
         if temporal_known:
-            guard_rail = "\n[SYSTEM NOTE: Wash day is ALREADY KNOWN. Move to Verification or Handoff.]"
+            guard_rails.append("[SYSTEM NOTE: Wash day is ALREADY KNOWN. Move to Verification or Handoff.]")
         else:
-            guard_rail = "\n[SYSTEM NOTE: Wash day is UNKNOWN. You must ask for the wash day timeline soon.]"
+            guard_rails.append("[SYSTEM NOTE: Wash day is UNKNOWN. Ask for the wash day timeline soon.]")
 
         prompt_parts = [
             self.SYSTEM_PROMPT,
-            guard_rail
+            "\n".join(guard_rails)
         ]
         
         # Inject past context from Librarian if available
