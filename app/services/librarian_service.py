@@ -164,6 +164,55 @@ class LibrarianService:
         print(f"[LIBRARIAN] Categorized '{target_vital}' as '{category}'")
         return category
 
+    def get_vitals_summary(self, user_id: str) -> Dict[str, Dict]:
+        """
+        Retrieve a summary of latest, average, and historical trends for all core vitals.
+        
+        Args:
+            user_id: Firebase user ID
+            
+        Returns:
+            Dict mapping each category (lowercase) to its latest, average, and history data.
+        """
+        try:
+            # Get all events for user to calculate averages and history
+            response = self.supabase.table("hair_events") \
+                .select("primary_label, vital_score, created_at") \
+                .eq("user_id", user_id) \
+                .order("created_at", desc=True) \
+                .execute()
+            
+            data = response.data if response.data else []
+            
+            summary = {}
+            for category in self.CORE_CATEGORIES:
+                # Filter events for this category
+                cat_events = [e for e in data if e.get('primary_label') == category]
+                
+                if not cat_events:
+                    summary[category.lower()] = {
+                        "latest": None,
+                        "average": None,
+                        "history": []
+                    }
+                    continue
+                
+                # Extract scores (filtering out any potential Nones)
+                scores = [e['vital_score'] for e in cat_events if e.get('vital_score') is not None]
+                
+                summary[category.lower()] = {
+                    "latest": scores[0] if scores else None,
+                    "average": round(sum(scores) / len(scores), 1) if scores else None,
+                    "history": scores[:5] # Last 5 scores for trend visualization (already DESC)
+                }
+            
+            print(f"[LIBRARIAN] Generated vitals summary for user {user_id}")
+            return summary
+            
+        except Exception as e:
+            print(f"[LIBRARIAN ERROR] Failed to calculate vitals summary: {str(e)}")
+            return {cat.lower(): {"latest": None, "average": None, "history": []} for cat in self.CORE_CATEGORIES}
+
 
 # Singleton instance
 _librarian_instance = None

@@ -1,10 +1,20 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.search import router as search_router
 from app.api.orchestrator import router as orchestrator_router
 from app.api.chat import router as chat_router
 
 app = FastAPI(title="Concierge API")
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include the router with the prefix
 

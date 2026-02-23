@@ -284,6 +284,31 @@ async def save_event_endpoint(request: SaveEventRequest):
 
 
 
+@router.get("/vitals/{user_id}")
+async def get_vitals_summary_endpoint(user_id: str):
+    """
+    GET /api/vitals/{user_id}
+    
+    Retrieve a summary of latest, average, and historical trends for all core vitals.
+    
+    Args:
+        user_id: The user identifier
+        
+    Returns:
+        Dict mapping each category to its latest, average, and history data.
+    """
+    try:
+        librarian = get_librarian()
+        summary = librarian.get_vitals_summary(user_id)
+        return summary
+    except Exception as e:
+        log_error(e, context="get_vitals_summary_endpoint")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve vitals summary: {str(e)}"
+        )
+
+
 @router.get("/events/{user_id}")
 async def get_user_events(user_id: str):
     """
