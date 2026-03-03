@@ -120,7 +120,7 @@ CRITICAL RULES:
         current_message: str,
         past_context: str = None
     ) -> str:
-        """Calls the LLM and streams the response with past context."""
+        """Calls the LLM and returns the full response (blocking). Used by /api/chat."""
         conversation = self._build_prompt(history, current_message, past_context)
         
         full_response = ""
@@ -129,6 +129,30 @@ CRITICAL RULES:
                 full_response += chunk.get("content", "")
         
         return full_response.strip()
+
+    async def stream_diagnostic(
+        self,
+        history: List[Dict[str, str]],
+        current_message: str,
+        past_context: str = None
+    ):
+        """
+        Async generator for SSE streaming. Yields dicts:
+          - {"type": "delta", "content": str}   — one per LLM chunk
+          - {"type": "done", "handoff": bool, "target_vital": str|None}  — once at the end
+        """
+        conversation = self._build_prompt(history, current_message, past_context)
+
+        full_response = ""
+        async for chunk in run_llm_agent(conversation, self.model):
+            if chunk.get("type") == "content":
+                text = chunk.get("content", "")
+                full_response += text
+                yield {"type": "delta", "content": text}
+
+        # Parse handoff/category from the complete response
+        clean_message, handoff, target_vital = self.parse_response(full_response.strip())
+        yield {"type": "done", "handoff": handoff, "target_vital": target_vital, "clean_message": clean_message}
 
     def parse_response(self, response_text: str) -> Tuple[str, bool, Optional[str]]:
         """Extracts the handoff trigger and cleans the message for the UI."""

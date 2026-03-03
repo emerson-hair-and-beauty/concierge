@@ -1,5 +1,7 @@
 import asyncio
+import json
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 from app.api.models import (
     ChatRequest, 
     ChatResponse, 
@@ -176,6 +178,63 @@ async def chat_endpoint(request: ChatRequest):
             status_code=500,
             detail=f"An unexpected error occurred: {str(e)}"
         )
+
+
+@router.post("/chat/stream")
+async def chat_stream_endpoint(request: ChatRequest):
+    """
+    POST /api/chat/stream
+
+    Streaming variant of /api/chat. Returns Server-Sent Events (SSE).
+    Each event is a JSON line prefixed with "data: ".
+
+    Events:
+      data: {"type": "delta", "content": "..."}       — text chunk
+      data: {"type": "done",  "handoff": bool, "target_vital": str|null, "session_id": str}
+      data: {"type": "error", "detail": "..."}         — on failure
+    """
+    if not request.message or not request.session_id:
+        raise HTTPException(status_code=400, detail="Missing message or session_id")
+
+    # All pre-processing is identical to /api/chat
+    db = get_db()
+
+    history = get_history_from_cache(request.session_id, limit=10)
+    append_to_history_cache(request.session_id, "user", request.message, user_id=request.user_id)
+
+    if request.session_id in _session_context_cache:
+        past_context = _session_context_cache[request.session_id]
+    else:
+        try:
+            librarian = get_librarian()
+            past_events = librarian.get_recent_events(request.user_id, limit=5)
+            past_context = librarian.format_context_for_prompt(past_events)
+            _session_context_cache[request.session_id] = past_context
+        except Exception as e:
+            log_error(e, context="librarian_fetch_stream", extra_data={"user_id": request.user_id})
+            past_context = ""
+
+    async def event_generator():
+        from app.agents.empath_diagnostic import EmpathDiagnosticAgent
+        agent = EmpathDiagnosticAgent()
+        full_message = ""
+        try:
+            async for event in agent.stream_diagnostic(history, request.message, past_context):
+                if event["type"] == "delta":
+                    full_message += event["content"]
+                    yield f"data: {json.dumps({'type': 'delta', 'content': event['content']})}\n\n"
+                elif event["type"] == "done":
+                    # Save the clean (checkpoint-stripped) message to cache
+                    clean = event.get("clean_message", full_message)
+                    append_to_history_cache(request.session_id, "assistant", clean, user_id=request.user_id)
+                    yield f"data: {json.dumps({'type': 'done', 'handoff': event['handoff'], 'target_vital': event['target_vital'], 'session_id': request.session_id})}\n\n"
+        except asyncio.TimeoutError:
+            yield f"data: {json.dumps({'type': 'error', 'detail': 'Diagnostic engine timed out.'})}\n\n"
+        except Exception as e:
+            log_error(e, context="chat_stream_event_generator")
+            yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @router.post("/chat/warmup")
