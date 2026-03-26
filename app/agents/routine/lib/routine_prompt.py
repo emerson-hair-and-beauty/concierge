@@ -4,28 +4,51 @@ import json
 
 def routine_prompt(advice: dict) -> dict:
     """
-    Build a RoutineAgent prompt from directives and routine_flags,
-    send it to the LLM, and return structured JSON.
-    
+    Build a RoutineAgent prompt from the collated advice object.
+
     advice: {
-        "directives": { porosity: "...", scalp: "...", ... },
-        "routine_flags": { porosity: [...], scalp: [...], ... }
+        "goals": "Long-lasting definition, Frizz control",  ← primary objective
+        "directives": { texture: "...", density: "...", ... },  ← guardrails
+        "routine_flags": { texture: [...], density: [...], ... }
     }
     """
+    goals = advice.get("goals", "General curl health")
+    directives = advice.get("directives", {})
+    routine_flags = advice.get("routine_flags", {})
+
+    # Flatten flags into a readable list
+    all_flags = []
+    for flag_list in routine_flags.values():
+        all_flags.extend(flag_list)
+    flags_text = ", ".join(sorted(set(all_flags))) if all_flags else "standard_care"
+
     prompt = f"""
-You are the RoutineAgent.
-Create a personalized 5-step hair care routine using ONLY the info provided.
-Do NOT guess traits or add extra information.
-Do NOT recommend specific products; another agent handles that.
+You are the RoutineAgent for Emerson Curl Concierge.
+Your job is to create a personalised 5-step wash day routine.
 
-Directives:
-{advice['directives']}
+== PRIMARY GOAL ==
+The routine MUST be designed to achieve the following for this user:
+  {goals}
 
-Routine Flags:
-{advice['routine_flags']}
+Every step in the routine should directly serve this goal. Prioritise steps and ingredients that help achieve it.
+
+== CONSTRAINTS ==
+You must respect the following hair profile guardrails. These are facts about the user's hair that constrain HOW you achieve the goal:
+
+{directives}
+
+Active routine flags (these restrict or shape product and method choices):
+  {flags_text}
+
+== RULES ==
+- Do NOT recommend specific product names; another agent handles that.
+- Do NOT guess traits or add information not provided.
+- The routine must feel like a professional curl consultation recommendation.
+- GCC climate context: the routine should account for high-humidity conditions.
 
 Output JSON (exact format):
 {{
+  "goal": "{goals}",
   "routine": [
     {{
       "step": "Cleanse",
@@ -41,7 +64,7 @@ Output JSON (exact format):
     }},
     {{
       "step": "Treat",
-      "action": "...",  
+      "action": "...",
       "ingredients": ["...", "..."],
       "notes": "..."
     }},
@@ -64,6 +87,7 @@ Return ONLY valid JSON.
 """
     print(prompt)
     return prompt
+
 
 async def clean_llm_response(response_text: str, model):
       cleaned_response = parse_gemini_response(response_text)

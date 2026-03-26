@@ -38,11 +38,13 @@ def classify_scalp(answer):
         "routine_flags": []
     })
 
-def classify_porosity(answer):
-    # Client now sends porosity as a string (e.g., "Medium Porosity")
-    # No need to calculate it from quiz answers anymore
-    
-    porosity_map = {
+def classify_moisture_behaviour(answer):
+    """
+    Previously 'classify_porosity'. The client now labels this as 'Moisture Behaviour'.
+    Accepts both old porosity labels and new moisture behaviour labels.
+    """
+    moisture_map = {
+        # New labels (Moisture Behaviour screen)
         'Low Porosity': {
             "label": "Low Porosity",
             "directive": "Use lightweight humectants, avoid heavy oils and butters, incorporate heat for better absorption.",
@@ -60,18 +62,75 @@ def classify_porosity(answer):
             "directive": "Use rich moisturizers, seal moisture, incorporate protein.",
             "product_needs": ["protein", "occlusives"],
             "routine_flags": ["seal_moisture", "strengthen"]
-        }
+        },
+        # Backward compatibility aliases
+        'Low': {
+            "label": "Low Porosity",
+            "directive": "Use lightweight humectants, avoid heavy oils and butters, incorporate heat for better absorption.",
+            "product_needs": ["humectants", "lightweight formulas"],
+            "routine_flags": ["avoid_butters", "use_heat_for_masks"]
+        },
+        'Medium': {
+            "label": "Medium Porosity",
+            "directive": "Maintain balance with regular moisture and protein.",
+            "product_needs": ["balanced_moisture", "moderate_protein"],
+            "routine_flags": ["standard_care"]
+        },
+        'High': {
+            "label": "High Porosity",
+            "directive": "Use rich moisturizers, seal moisture, incorporate protein.",
+            "product_needs": ["protein", "occlusives"],
+            "routine_flags": ["seal_moisture", "strengthen"]
+        },
     }
 
-    return porosity_map.get(answer, {
-        "label": "Unknown Porosity",
+    return moisture_map.get(answer, {
+        "label": "Unknown Moisture Behaviour",
         "directive": "No directive available.",
         "product_needs": [],
         "routine_flags": []
     })
 
+# Keep old name as an alias for backward compatibility
+classify_porosity = classify_moisture_behaviour
+
+
 def classify_texture(answer):
+    """
+    Updated to match new onboarding options:
+      - Soft waves     → Type 2
+      - Loose curls    → Type 3A/B
+      - Spring curls   → Type 3C
+      - Tight coils    → Type 4
+    Old generic labels (Wavy, Curly, Coily, Straight) are kept as aliases.
+    """
     texture_map = {
+        # New onboarding labels
+        'Soft waves': {
+            "label": "Type 2 — Soft Waves",
+            "directive": "Use lightweight gels and creams that enhance and define wave pattern. Avoid heavy products that collapse waves.",
+            "product_needs": ["light_gels", "mousse", "lightweight_leave_in"],
+            "routine_flags": ["enhance_waves", "avoid_heavy"]
+        },
+        'Loose curls': {
+            "label": "Type 3A/B — Loose Curls",
+            "directive": "Enhance definition and bounce with curl creams and medium-hold gels. Focus on moisture and frizz control.",
+            "product_needs": ["curl_creams", "medium_gels", "leave_in_conditioner"],
+            "routine_flags": ["enhance_curls", "frizz_control"]
+        },
+        'Spring curls': {
+            "label": "Type 3C — Spring Curls",
+            "directive": "Use hold-forward products to define tight curl pattern. Prioritise moisture retention and anti-frizz sealants.",
+            "product_needs": ["defining_gel", "curl_cream", "anti_frizz_serum"],
+            "routine_flags": ["strong_definition", "seal_moisture", "frizz_control"]
+        },
+        'Tight coils': {
+            "label": "Type 4 — Tight Coils",
+            "directive": "Use rich moisturizers, creams and sealant oils. Minimise manipulation; protective styling recommended.",
+            "product_needs": ["butters", "oils", "thick_creams"],
+            "routine_flags": ["high_moisture", "protective_styles", "seal_with_oil"]
+        },
+        # Backward compatibility aliases
         'Straight': {
             "label": "Type 1",
             "directive": "Avoid heavy products, focus on volume and scalp health.",
@@ -152,6 +211,39 @@ def classify_damage(answer):
 
     return damage_map.get(answer, {
         "label": "Unknown Damage State",
+        "directive": "No directive available.",
+        "product_needs": [],
+        "routine_flags": []
+    })
+
+def classify_humidity_response(answer):
+    """
+    GCC-specific climate classifier. Determines how the user's curls react to humidity.
+    This is treated as an environmental constraint (not an intrinsic hair trait).
+    """
+    humidity_map = {
+        'Expand and become frizzy': {
+            "label": "High Humidity Sensitivity",
+            "directive": "Prioritise anti-humectant strategy in humid conditions: use sealants and strong-hold gels to block moisture from the air.",
+            "product_needs": ["strong_hold_gel", "anti_frizz_sealant", "non_humectant_stylers"],
+            "routine_flags": ["anti_humectant", "strong_hold", "humidity_shield"]
+        },
+        'Lose definition': {
+            "label": "Moderate Humidity Sensitivity",
+            "directive": "Layer a medium-hold gel or cream over leave-in to maintain definition in humidity. Avoid heavy humectants as a top layer.",
+            "product_needs": ["medium_hold_gel", "curl_defining_cream"],
+            "routine_flags": ["definition_lock", "frizz_control"]
+        },
+        'Stay mostly the same': {
+            "label": "Low Humidity Sensitivity",
+            "directive": "Hair is relatively humidity-resistant. Standard moisture-balance routine applies.",
+            "product_needs": [],
+            "routine_flags": ["standard_care"]
+        }
+    }
+
+    return humidity_map.get(answer, {
+        "label": "Unknown Humidity Response",
         "directive": "No directive available.",
         "product_needs": [],
         "routine_flags": []

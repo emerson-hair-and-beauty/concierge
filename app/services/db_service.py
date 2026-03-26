@@ -314,6 +314,157 @@ class DatabaseService:
             print(f"[DB ERROR] Failed to retrieve routine: {str(e)}")
             return None
 
+    def get_all_users(self) -> List[Dict]:
+        """
+        Retrieve all users from metadata table, presumably to run cron jobs over them.
+        Returns: List of user dictionaries.
+        """
+        try:
+            response = self.supabase.table("user_metadata").select("*").execute()
+            print(f"[DB] Retrieved {len(response.data) if response.data else 0} users from metadata")
+            return response.data or []
+        except Exception as e:
+            print(f"[DB ERROR] Failed to retrieve users: {str(e)}")
+            return []
+            
+    def update_last_weather_alert_sent(self, user_id: str, timestamp_iso: str) -> bool:
+        """
+        Update the last_weather_alert_sent timestamp for a user in user_metadata.
+        """
+        try:
+            self.supabase.table("user_metadata").update(
+                {"last_weather_alert_sent": timestamp_iso}
+            ).eq("user_id", user_id).execute()
+            print(f"[DB] Updated last_weather_alert_sent for user {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to update user alert timestamp: {str(e)}")
+            return False
+
+    def log_wash_event(self, user_id: str) -> bool:
+        """
+        Log an explicit wash event directly to the wash_logs table.
+        """
+        try:
+            self.supabase.table("wash_logs").insert({"user_id": user_id}).execute()
+            print(f"[DB] Logged wash event for user {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to log wash event: {str(e)}")
+            return False
+
+    def get_latest_wash_events(self, user_id: str, limit: int = 10) -> List[Dict]:
+        """
+        Fetch explicit wash log records for a given user.
+        """
+        try:
+            response = self.supabase.table("wash_logs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+            return response.data or []
+        except Exception as e:
+            print(f"[DB ERROR] Failed to fetch wash logs: {str(e)}")
+            return []
+
+    def update_user_location(self, user_id: str, location: str) -> bool:
+        """
+        Update a user's geolocation string explicitly in user_metadata.
+        """
+        try:
+            # upsert since location is prime metadata
+            self.supabase.table("user_metadata").upsert({
+                "user_id": user_id,
+                "location": location
+            }).execute()
+            print(f"[DB] Updated location for user {user_id}: {location}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to update user location: {str(e)}")
+            return False
+
+    def save_pending_alert(self, user_id: str, scenario: str, prompt: str) -> bool:
+        """
+        Save a generated scenario alert to the pending_alerts table.
+        """
+        try:
+            self.supabase.table("pending_alerts").insert({
+                "user_id": user_id,
+                "scenario": scenario,
+                "prompt": prompt
+            }).execute()
+            print(f"[DB] Saved {scenario} alert for user {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to save pending alert: {str(e)}")
+            return False
+
+    def get_pending_alerts(self, user_id: str, limit: int = 3) -> List[Dict]:
+        """
+        Fetch unread alerts for the user, ordered by most recent.
+        Defaults to limit 3 for frontend cycling.
+        """
+        try:
+            response = self.supabase.table("pending_alerts") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .eq("is_read", False) \
+                .order("created_at", desc=True) \
+                .limit(limit) \
+                .execute()
+            return response.data or []
+        except Exception as e:
+            print(f"[DB ERROR] Failed to fetch pending alerts: {str(e)}")
+            return []
+
+    def mark_alert_read(self, alert_id: str) -> bool:
+        """
+        Mark a specific alert as read.
+        """
+        try:
+            self.supabase.table("pending_alerts").update({"is_read": True}).eq("id", alert_id).execute()
+            print(f"[DB] Marked alert {alert_id} as read")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to mark alert read: {str(e)}")
+            return False
+
+
+    def save_user_profile(self, user_id: str, profile_data: Dict) -> bool:
+        """
+        Save or update a user's profile metadata collected during onboarding.
+        
+        Args:
+            user_id: The user identifier
+            profile_data: Dictionary containing profile fields (first_name, location, goals, etc.)
+        """
+        try:
+            # Ensure user_id is in the payload for the upsert
+            payload = {"user_id": user_id, **profile_data}
+            
+            # Upsert into user_metadata table (creates new or updates existing)
+            self.supabase.table("user_metadata").upsert(payload).execute()
+            print(f"[DB] Saved user profile for {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to save user profile: {str(e)}")
+            return False
+
+    def save_routine(self, user_id: str, routine_data: Dict) -> bool:
+        """
+        Save a generated routine to the user's metadata profile.
+        
+        Args:
+            user_id: The user identifier
+            routine_data: Dictionary containing the generated routine and products
+        """
+        try:
+            payload = {"user_id": user_id, "routine": routine_data}
+            
+            # Upsert into user_metadata table
+            self.supabase.table("user_metadata").upsert(payload).execute()
+            print(f"[DB] Saved routine for {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to save routine: {str(e)}")
+            return False
 
 # Global singleton instance
 _db_instance: Optional[DatabaseService] = None

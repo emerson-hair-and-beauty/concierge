@@ -8,12 +8,26 @@ from datetime import datetime
 # ============================================
 
 class OrchestratorInput(BaseModel):
-    porosity: str
-    scalp: str
-    damage: str
-    density: str
+    # Core hair profile (classifiers / guardrails)
     texture: str
-    user_id: Optional[str] = None # Added for routine persistence
+    density: str
+    moisture_behaviour: str         # Renamed from 'porosity' — maps to classify_porosity internally
+    porosity: Optional[str] = None  # Kept for backward compatibility; overrides moisture_behaviour if provided
+    scalp: Optional[str] = None     # Kept for backward compatibility; not surfaced in new onboarding
+    damage: Optional[str] = None    # Kept for backward compatibility; not surfaced in new onboarding
+
+    # New onboarding fields
+    humidity_response: Optional[str] = None  # Climate-specific field (GCC context)
+    hair_goals: Optional[List[str]] = None   # Primary routine objective (multi-select)
+
+    # User identity fields (persisted to user_metadata)
+    first_name: Optional[str] = None
+    location: Optional[str] = None
+    gender: Optional[str] = None
+    email: Optional[str] = None
+    hair_length: Optional[str] = None
+
+    user_id: Optional[str] = None  # Firebase user ID
 
 # ============================================
 # Empath Diagnostic Engine Models
@@ -74,3 +88,12 @@ class SaveEventRequest(BaseModel):
     keywords: List[str] = Field(default_factory=list)
     wash_day_number: Optional[int] = None
     day_in_cycle: Optional[int] = None
+
+class WashEventRequest(BaseModel):
+    """Input schema for POST /api/user/wash"""
+    user_id: str
+
+class LocationUpdateRequest(BaseModel):
+    """Input schema for POST /api/user/location"""
+    user_id: str
+    location: str

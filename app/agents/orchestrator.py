@@ -51,6 +51,20 @@ async def orchestrator(answers: OrchestratorInput):
 
         yield json.dumps({"type": "status", "content": "Processing your input..."}) + "\n"
         answers_dict = await receive_input(answers)
+
+        # Extract profile fields that shouldn't go to the classifier/routine prompts
+        profile_keys = ["first_name", "location", "gender", "email", "hair_length"]
+        profile_data = {k: answers_dict.get(k) for k in profile_keys if answers_dict.get(k) is not None}
+        
+        # Save user profile data to database if user_id is present
+        if answers.user_id and profile_data:
+            from app.services.db_service import get_db
+            try:
+                db = get_db()
+                db.save_user_profile(answers.user_id, profile_data)
+            except Exception as e:
+                print(f"[Orchestrator] Failed to save user profile: {e}")
+
         advice = await processInput(answers_dict)
         
         yield json.dumps({"type": "status", "content": "Generating routine..."}) + "\n"
@@ -118,7 +132,7 @@ async def orchestrator(answers: OrchestratorInput):
         # Thinking tokens are billed as output, so derived output_tokens = total - prompt
         derived_output_tokens = total_routine_usage["total_tokens"] - total_routine_usage["prompt_tokens"]
         cost_routine = calculate_gemini_cost("gemini-2.5-flash-lite", total_routine_usage["prompt_tokens"], derived_output_tokens)
-        cost_embedding = calculate_embedding_cost("text-embedding-004", total_embedding_usage["total_tokens"])
+        cost_embedding = calculate_embedding_cost("gemini-embedding-001", total_embedding_usage["total_tokens"])
         total_cost = cost_routine + cost_embedding
         
         grand_total_tokens = total_routine_usage["total_tokens"] + total_embedding_usage["total_tokens"]
@@ -131,7 +145,7 @@ async def orchestrator(answers: OrchestratorInput):
                     **total_routine_usage
                 },
                 "embeddings": {
-                    "model": "text-embedding-004",
+                    "model": "gemini-embedding-001",
                     **total_embedding_usage
                 },
                 "grand_total_tokens": grand_total_tokens,

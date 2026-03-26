@@ -241,32 +241,47 @@ async def chat_stream_endpoint(request: ChatRequest):
 async def chat_warmup(request: ChatRequest):
     """
     POST /api/chat/warmup
-    
-    Proactively load and cache Librarian context for a session.
-    Reduces latency for the first message.
+
+    Proactively loads and caches Librarian context for a session, and returns
+    a personalised greeting for returning users.
+
+    Response:
+      {
+        "status": "ready" | "failed",
+        "session_id": str,
+        "greeting": str | null,   -- null for first-time users
+        "is_returning_user": bool
+      }
     """
     try:
         if not request.user_id or not request.session_id:
             raise ChatValidationError("Missing user_id or session_id")
-            
-        # Only cache if not already present
+
+        librarian = get_librarian()
+
         if request.session_id not in _session_context_cache:
-            librarian = get_librarian()
             past_events = librarian.get_recent_events(request.user_id, limit=5)
             past_context = librarian.format_context_for_prompt(past_events)
             _session_context_cache[request.session_id] = past_context
             log_chat_event("warmup_success", request.session_id, "Context pre-cached")
         else:
+            past_events = []  # already cached — skip re-fetch
             log_chat_event("warmup_skipped", request.session_id, "Context already cached")
-            
-        return {"status": "ready", "session_id": request.session_id}
-        
+
+        greeting = await librarian.build_greeting(past_events)
+
+        return {
+            "status": "ready",
+            "session_id": request.session_id,
+            "greeting": greeting,
+            "is_returning_user": greeting is not None
+        }
+
     except ChatValidationError as ce:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=ce.message)
     except Exception as e:
         log_error(e, context="chat_warmup_failure")
-        # Warmup failure shouldn't be a hard error for the client
-        return {"status": "failed", "detail": str(e)}
+        return {"status": "failed", "session_id": request.session_id, "greeting": None, "is_returning_user": False}
 
 
 @router.post("/event", response_model=HairEvent)
