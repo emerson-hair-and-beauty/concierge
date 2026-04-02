@@ -97,3 +97,4 @@ class LocationUpdateRequest(BaseModel):
     """Input schema for POST /api/user/location"""
     user_id: str
     location: str
+
