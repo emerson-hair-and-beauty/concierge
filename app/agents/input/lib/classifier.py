@@ -94,7 +94,6 @@ def classify_moisture_behaviour(answer):
 # Keep old name as an alias for backward compatibility
 classify_porosity = classify_moisture_behaviour
 
-
 def classify_texture(answer):
     """
     Updated to match new onboarding options:

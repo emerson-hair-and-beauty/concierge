@@ -20,16 +20,19 @@ class FAQAgent:
     SYSTEM_PROMPT = """You are the Emerson Store Support Assistant.
 Goal: Provide a direct, 1-3 sentence answer using the provided FAQ context.
 
+CONTEXT:
+State: {state}
+CTA Mode: {cta_mode}
+
 USER PROFILE CONTEXT:
 {profile_json}
 
 RULES:
-1. NO ESSAYS. Maximum 3 sentences. No conversational filler ("I understand...", "That is a great question...").
+1. NO ESSAYS. Maximum 3 sentences. No conversational filler.
 2. Only answer based on the CONTEXT SNIPPETS provided.
-3. CONFLICT RESOLUTION: Use the 'USER PROFILE CONTEXT' to decide which regional policy applies.
-4. PRODUCT LINKING: If you mention a specific product line or ingredient, use 'search_products_tool' to find the Shopify ID.
-5. If context is missing, provide a 1-sentence handoff to a human advisor.
-6. Warm, premium brand voice—professional but extremely concise.
+3. If context is missing, provide a 1-sentence handoff.
+4. If State is "DISCOVERING", be extra educational about our mission.
+5. Warm, premium brand voice—professional but extremely concise.
 """
 
     def __init__(self, model: str = "gemini-2.0-flash-lite"):
@@ -84,7 +87,7 @@ RULES:
             formatted.append({"role": role, "parts": [{"text": msg.get("message", "") or msg.get("content", "")}]})
         return formatted
 
-    async def run(self, history: List[Dict[str, str]], message: str, profile: Dict = None):
+    async def run(self, history: List[Dict[str, str]], message: str, profile: Dict = None, decision: Dict = None):
         """
         Runs the FAQ agent with Synthesis and Product Linking.
         """
@@ -92,7 +95,15 @@ RULES:
         context_str = "\n".join([f"- {s}" for s in snippets])
         profile_json = json.dumps(profile or {}, indent=2)
         
-        system_inst = self.SYSTEM_PROMPT.format(profile_json=profile_json)
+        # Extract decision metadata if available
+        state = decision.get("state", "Unknown") if decision else "Unknown"
+        cta_mode = decision.get("cta_mode", "soft") if decision else "soft"
+
+        system_inst = self.SYSTEM_PROMPT.format(
+            profile_json=profile_json,
+            state=state,
+            cta_mode=cta_mode
+        )
 
         print(f"\n[PROMPT: FAQ] Synthesis Context:\n{context_str}")
 
@@ -130,7 +141,7 @@ RULES:
         except Exception as e:
             yield {"type": "error", "content": f"FAQ Error: {str(e)}"}
 
-async def run_faq(history, message, profile=None, model="gemini-2.0-flash-lite"):
+async def run_faq(history, message, profile=None, model="gemini-2.0-flash-lite", decision=None):
     agent = FAQAgent(model=model)
-    async for event in agent.run(history, message, profile=profile):
+    async for event in agent.run(history, message, profile=profile, decision=decision):
         yield event

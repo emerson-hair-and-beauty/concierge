@@ -21,6 +21,11 @@ class HairAdvisorAgent:
     SYSTEM_PROMPT = """You are the Emerson Expert Hair Advisor.
 Your mission is to provide accurate, 1-3 sentence curl care advice.
 
+CONTEXT:
+State: {state}
+Problem Type: {problem_type}
+CTA Mode: {cta_mode}
+
 ADVICE GUARDRAILS (Based on current profile):
 {directives}
 
@@ -28,11 +33,11 @@ ROUTINE FLAGS:
 {routine_flags}
 
 RULES:
-1. NO ESSAYS. Maximum 3 sentences. No conversational filler ("I understand...", "That is a great question...").
-2. PRODUCT LINKING: If you recommend a technique that requires a product (e.g., "Scrunch in a gel"), you MUST use 'search_products_tool' to find the Shopify ID.
-3. Only use the 'Directives' and 'Routine Flags' as your absolute ground truth for this user.
-4. If asked about a product, hand the user back to the "Consultation" agent.
-5. If the hair profile is unknown/missing, provide high-quality general best practices but emphasize "it depends on your profile" and suggest they tell you more about their hair.
+1. NO ESSAYS. Maximum 3 sentences. No conversational filler.
+2. PRODUCT LINKING: If you recommend a technique that requires a product, you MUST use 'search_products_tool'.
+3. Only use the 'Directives' and 'Routine Flags' as your absolute ground truth.
+4. If the State is "DIAGNOSING", focus on explaining the cause of the {problem_type}.
+5. If the State is "EVALUATING", focus on comparing options or narrowing choices.
 6. Warm, premium brand voice—professional but extremely concise.
 """
 
@@ -68,7 +73,7 @@ RULES:
             formatted.append({"role": role, "parts": [{"text": msg.get("message", "") or msg.get("content", "")}]})
         return formatted
 
-    async def run(self, history: List[Dict[str, str]], message: str, profile: Dict = None, user_id: str = None):
+    async def run(self, history: List[Dict[str, str]], message: str, profile: Dict = None, user_id: str = None, decision: Dict = None):
         """
         Runs the Hair Advisor agent with dynamic context and product linking.
         """
@@ -80,7 +85,15 @@ RULES:
         directives_str = "\n".join([f"- {k}: {v}" for k, v in advice_data.get("directives", {}).items() if v])
         flags_str = str(advice_data.get("routine_flags", {}))
         
+        # Extract decision metadata if available
+        state = decision.get("state", "Unknown") if decision else "Unknown"
+        problem_type = decision.get("problem_type", "Unknown") if decision else "Unknown"
+        cta_mode = decision.get("cta_mode", "soft") if decision else "soft"
+
         system_inst = self.SYSTEM_PROMPT.format(
+            state=state,
+            problem_type=problem_type,
+            cta_mode=cta_mode,
             directives=directives_str if directives_str else "No specific profile known yet. Providing general guidance.",
             routine_flags=flags_str
         )
@@ -121,7 +134,7 @@ RULES:
         except Exception as e:
             yield {"type": "error", "content": f"Advisor Error: {str(e)}"}
 
-async def run_hair_advisor(history, message, profile=None, user_id=None, model="gemini-2.0-flash-lite"):
+async def run_hair_advisor(history, message, profile=None, user_id=None, model="gemini-2.0-flash-lite", decision=None):
     agent = HairAdvisorAgent(model=model)
-    async for event in agent.run(history, message, profile=profile, user_id=user_id):
+    async for event in agent.run(history, message, profile=profile, user_id=user_id, decision=decision):
         yield event

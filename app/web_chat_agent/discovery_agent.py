@@ -22,18 +22,21 @@ class DiscoveryAgent:
     SYSTEM_PROMPT = """You are Emerson's Socratic Discovery Expert.
 Your goal is to consult with the user to identify their hair profile and style goals.
 
+CONTEXT:
+State: {state}
+CTA Mode: {cta_mode}
+
 CURRENT PROFILE KNOWLEDGE:
 {profile_json}
 
 CONSULTATION RULES:
-1. NO ESSAYS. Maximum 2-3 sentences per segment. No conversational filler ("I understand...", "That is a great question...").
-2. SILENT ONBOARDING: Review the 'CURRENT PROFILE KNOWLEDGE'. If any core fields are null, your primary mission is to "fill a gap" by weaving a natural question into your response.
-3. DO NOT recommend products immediately unless the profile is mostly complete or the user is very specific.
-4. Once you have a clear picture, use the 'search_products_tool'.
-5. Keep the tone expert, warm, and luxury concierge-style—but extremely concise.
-
-MANDATORY HANDOFF:
-When you find products, briefly explain WHY they match the user's specific profile before displaying them.
+1. NO ESSAYS. Maximum 2-3 sentences per segment. No conversational filler.
+2. SILENT ONBOARDING: Review the 'CURRENT PROFILE KNOWLEDGE'. If any core fields are null, weave a natural question into your response.
+3. ADAPTIVE PACE: 
+   - If State is "DISCOVERING", be very exploratory. 
+   - If State is "CONVERSION_READY" or CTA Mode is "direct", move to recommendation faster.
+4. Keep the tone expert, warm, and luxury concierge-style—but extremely concise.
+5. When you find products, briefly explain WHY they match the user's specific profile before displaying them.
 """
 
     def __init__(self, model: str = "gemini-2.0-flash-lite"):
@@ -56,12 +59,21 @@ When you find products, briefly explain WHY they match the user's specific profi
             formatted.append({"role": role, "parts": [{"text": msg.get("message", "") or msg.get("content", "")}]})
         return formatted
 
-    async def run(self, history: List[Dict[str, str]], message: str, profile: Dict = None):
+    async def run(self, history: List[Dict[str, str]], message: str, profile: Dict = None, decision: Dict = None):
         """
         Runs the discovery agent with tool-calling and profile awareness.
         """
         profile_json = json.dumps(profile or {}, indent=2)
-        system_inst = self.SYSTEM_PROMPT.format(profile_json=profile_json)
+        
+        # Extract decision metadata if available
+        state = decision.get("state", "Unknown") if decision else "Unknown"
+        cta_mode = decision.get("cta_mode", "soft") if decision else "soft"
+
+        system_inst = self.SYSTEM_PROMPT.format(
+            profile_json=profile_json,
+            state=state,
+            cta_mode=cta_mode
+        )
 
         print(f"\n[PROMPT: DISCOVERY] System Instruction (Concise):\n{system_inst}")
 
@@ -99,7 +111,7 @@ When you find products, briefly explain WHY they match the user's specific profi
         except Exception as e:
             yield {"type": "error", "content": f"Discovery Error: {str(e)}"}
 
-async def run_discovery(history, message, profile=None, model="gemini-2.0-flash-lite"):
+async def run_discovery(history, message, profile=None, model="gemini-2.0-flash-lite", decision=None):
     agent = DiscoveryAgent(model=model)
-    async for event in agent.run(history, message, profile=profile):
+    async for event in agent.run(history, message, profile=profile, decision=decision):
         yield event
