@@ -32,7 +32,7 @@ async def web_chat_endpoint(request: WebChatRequest):
     shopify_id = None
     msg_type = "text"
     
-    async for event in orchestrate_web_chat(history, request.message, user_id=request.user_id):
+    async for event in orchestrate_web_chat(history, request.message, session_id=request.session_id, user_id=request.user_id):
         if event["type"] == "content":
             full_message += event["content"]
         elif event["type"] == "product":
@@ -57,7 +57,7 @@ async def web_chat_stream_endpoint(request: WebChatRequest):
     async def event_generator():
         full_message = ""
         try:
-            async for event in orchestrate_web_chat(history, request.message, user_id=request.user_id):
+            async for event in orchestrate_web_chat(history, request.message, session_id=request.session_id, user_id=request.user_id):
                 # Forward the event to the client
                 yield f"data: {json.dumps(event)}\n\n"
                 

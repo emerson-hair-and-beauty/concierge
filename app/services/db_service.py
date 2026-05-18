@@ -326,21 +326,23 @@ class DatabaseService:
         except Exception as e:
             print(f"[DB ERROR] Failed to retrieve users: {str(e)}")
             return []
-            
-    def update_last_weather_alert_sent(self, user_id: str, timestamp_iso: str) -> bool:
-        """
-        Update the last_weather_alert_sent timestamp for a user in user_metadata.
-        """
-        try:
-            self.supabase.table("user_metadata").update(
-                {"last_weather_alert_sent": timestamp_iso}
-            ).eq("user_id", user_id).execute()
-            print(f"[DB] Updated last_weather_alert_sent for user {user_id}")
-            return True
-        except Exception as e:
-            print(f"[DB ERROR] Failed to update user alert timestamp: {str(e)}")
-            return False
 
+    def get_user_metadata(self, user_id: str) -> Optional[Dict]:
+        """Fetch a single user's metadata row (location, goals, etc.)."""
+        try:
+            response = (
+                self.supabase.table("user_metadata")
+                .select("*")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            rows = response.data or []
+            return rows[0] if rows else None
+        except Exception as e:
+            print(f"[DB ERROR] Failed to fetch user metadata: {str(e)}")
+            return None
+            
     def log_wash_event(self, user_id: str) -> bool:
         """
         Log an explicit wash event directly to the wash_logs table.
@@ -380,51 +382,18 @@ class DatabaseService:
             print(f"[DB ERROR] Failed to update user location: {str(e)}")
             return False
 
-    def save_pending_alert(self, user_id: str, scenario: str, prompt: str) -> bool:
-        """
-        Save a generated scenario alert to the pending_alerts table.
-        """
-        try:
-            self.supabase.table("pending_alerts").insert({
-                "user_id": user_id,
-                "scenario": scenario,
-                "prompt": prompt
-            }).execute()
-            print(f"[DB] Saved {scenario} alert for user {user_id}")
-            return True
-        except Exception as e:
-            print(f"[DB ERROR] Failed to save pending alert: {str(e)}")
-            return False
-
     def get_pending_alerts(self, user_id: str, limit: int = 3) -> List[Dict]:
         """
         Fetch unread alerts for the user, ordered by most recent.
-        Defaults to limit 3 for frontend cycling.
+        Reads from the unified alert_log table; legacy contract preserved.
         """
-        try:
-            response = self.supabase.table("pending_alerts") \
-                .select("*") \
-                .eq("user_id", user_id) \
-                .eq("is_read", False) \
-                .order("created_at", desc=True) \
-                .limit(limit) \
-                .execute()
-            return response.data or []
-        except Exception as e:
-            print(f"[DB ERROR] Failed to fetch pending alerts: {str(e)}")
-            return []
+        from app.services.alerts.alert_state import get_unread_alerts
+        return get_unread_alerts(user_id, limit=limit)
 
     def mark_alert_read(self, alert_id: str) -> bool:
-        """
-        Mark a specific alert as read.
-        """
-        try:
-            self.supabase.table("pending_alerts").update({"is_read": True}).eq("id", alert_id).execute()
-            print(f"[DB] Marked alert {alert_id} as read")
-            return True
-        except Exception as e:
-            print(f"[DB ERROR] Failed to mark alert read: {str(e)}")
-            return False
+        """Mark a specific alert as read in alert_log."""
+        from app.services.alerts.alert_state import mark_read
+        return mark_read(alert_id)
 
 
     def save_user_profile(self, user_id: str, profile_data: Dict) -> bool:

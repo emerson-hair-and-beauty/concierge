@@ -11,6 +11,10 @@ from app.agents.llm_call.llm_call import run_llm_agent
 from .discovery_agent import run_discovery
 from .faq_agent import run_faq
 from .hair_advisor_agent import run_hair_advisor
+from app.services.session_signal.session_signal_service import process_session_signals
+from app.services.alerts.alert_service import process_alerts
+from app.services.environmental_factors.weather_service import get_city_environmental_data
+from app.services.db_service import get_db
 
 # In-memory session state for V1
 _session_profile_cache: Dict[str, Dict] = {}
@@ -103,6 +107,53 @@ No preamble or explanation.
         self.model = model
         self.observer = ProfileObserver(model=model)
 
+    async def _stream_alerts(
+        self,
+        user_id: str,
+        session_id: str,
+        history: List[Dict[str, str]],
+        message: str,
+    ) -> AsyncGenerator[Dict, None]:
+        """
+        Run the session signal detector against recent chat, fetch env context
+        for the user, then emit any new alerts as SSE events. Failures here are
+        non-fatal — alerts are best-effort and must not block the reply.
+        """
+        try:
+            full_history = history + [{"role": "user", "message": message}]
+            snapshot = await process_session_signals(user_id, session_id, full_history)
+        except Exception as e:
+            print(f"[orchestrator] session signal detection failed: {e}")
+            return
+
+        env_kwargs: Dict = {}
+        try:
+            metadata = get_db().get_user_metadata(user_id) or {}
+            location = metadata.get("location")
+            if location:
+                env_kwargs["country"] = location
+                weather = await get_city_environmental_data(location, attribute="all")
+                if weather:
+                    env_kwargs["temp_c"] = weather.get("peak_heat")
+                    env_kwargs["humidity"] = weather.get("peak_humidity")
+        except Exception as e:
+            print(f"[orchestrator] env context fetch failed: {e}")
+
+        try:
+            alerts = process_alerts(user_id, snapshot, **env_kwargs)
+        except Exception as e:
+            print(f"[orchestrator] alert processing failed: {e}")
+            return
+
+        for alert in alerts:
+            yield {
+                "type": "alert",
+                "alert_type": alert.alert_type,
+                "scenario": alert.scenario or alert.alert_type,
+                "source_type": alert.source_type,
+                "message": alert.message,
+            }
+
     async def decompose_intents(self, message: str) -> List[Dict]:
         """Decomposes a potentially compound message into specific intent tasks."""
         prompt = f"{self.TRIAGE_PROMPT}\n\nUSER MESSAGE: {message}\n\nJSON TASK LIST:"
@@ -120,18 +171,24 @@ No preamble or explanation.
             return [{"intent": "ADVISOR", "query": message}]
 
     async def stream_orchestrate(
-        self, 
-        history: List[Dict[str, str]], 
-        message: str, 
+        self,
+        history: List[Dict[str, str]],
+        message: str,
         session_id: str,
         user_id: str = None
     ) -> AsyncGenerator[Dict, None]:
         """
-        Dual-pass logic: Update state first (Pass 1), then dispatch (Pass 2).
+        Dual-pass logic: Update state first (Pass 1), run signals + alerts
+        (Pass 1.5), then dispatch (Pass 2).
         """
         # Pass 1: Observer (State Update)
         current_profile = await self.observer.update_state(session_id, message)
-        
+
+        # Pass 1.5: Session signals + alerts
+        if user_id:
+            async for event in self._stream_alerts(user_id, session_id, history, message):
+                yield event
+
         # Pass 2: Decompose & Dispatch
         print(f"\n--- [PASS 2: TRIAGE] Decomposing message: \"{message}\" ---")
         tasks = await self.decompose_intents(message)

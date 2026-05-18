@@ -1,18 +1,18 @@
-def get_water_hardness(country: str) -> str:
-    """
-    Determine if water is hard or soft based on the country.
-    UAE, Saudi Arabia, and Oman have soft water; all others are hard.
-    """
-    soft_water_countries = {
+def get_water_hardness(country: str, has_filtration: bool = False) -> str:
+    if has_filtration:
+        return "soft"
+
+    # GCC countries default to hard — desalinated water carries high mineral content
+    gcc_countries = {
         "uae", "united arab emirates", "ae",
         "saudi arabia", "saudi", "sa",
-        "oman", "om"
+        "oman", "om",
+        "qatar", "qa",
+        "kuwait", "kw",
+        "bahrain", "bh",
     }
-    
-    # Normalize input for case-insensitive comparison
-    normalized_country = country.strip().lower()
-    
-    if normalized_country in soft_water_countries:
-        return "soft"
-    else:
+
+    if country.strip().lower() in gcc_countries:
         return "hard"
+
+    return "hard"

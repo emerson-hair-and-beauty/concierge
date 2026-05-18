@@ -8,27 +8,29 @@ def calculate_dew_point(temp_c: float, humidity: float) -> float:
     Td = (243.04 * gamma) / (17.625 - gamma)
     """
     if humidity <= 0:
-        return -50.0 # Extreme fallback
-    
+        return -50.0
+
     gamma = math.log(humidity / 100.0) + (17.625 * temp_c) / (243.04 + temp_c)
     td = (243.04 * gamma) / (17.625 - gamma)
     return td
 
 def get_sweat_level(temp_c: float, humidity: float, in_ac: bool = False) -> str:
     """
-    Determine Sweat Level (HIGH, MEDIUM, LOW) based on Temperature, 
-    Dew Point, and contextual override (AC).
+    Determine Sweat Level (HIGH, MEDIUM, LOW, DRY) based on Temperature,
+    Dew Point, AC context, and season.
     """
-    # Contextual Override: If spending the day in AC, sweat is LOW
     if in_ac:
+        # Winter scenario: AC + cold outside = dry air exposure
+        if temp_c < 18:
+            return "DRY"
         return "LOW"
-    
+
     td = calculate_dew_point(temp_c, humidity)
-    
-    # Logic Gate Matrix
-    if td > 22:
+
+    # Trigger on humidity OR heat — either alone is sufficient
+    if td > 22 or humidity > 70:
         return "HIGH"
-    elif temp_c > 30:
+    elif temp_c > 28:
         return "MEDIUM"
     else:
         return "LOW"
