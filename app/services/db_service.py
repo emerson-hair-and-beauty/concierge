@@ -435,13 +435,114 @@ class DatabaseService:
             print(f"[DB ERROR] Failed to save routine: {str(e)}")
             return False
 
+    def get_pending_recommendations(self, user_id: str) -> List[Dict]:
+        """
+        Fetch pending (not yet accepted/dismissed) recommendations for a user.
+
+        Args:
+            user_id: The user identifier
+
+        Returns:
+            List of pending recommendation dicts
+        """
+        try:
+            response = self.supabase.table("routine_recommendations") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .eq("status", "pending") \
+                .order("created_at", desc=True) \
+                .execute()
+
+            print(f"[DB] Retrieved {len(response.data or [])} pending recommendations for {user_id}")
+            return response.data or []
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to fetch recommendations: {str(e)}")
+            return []
+
+    def save_recommendation(self, user_id: str, recommendation: Dict) -> bool:
+        """
+        Save a recommendation to the database.
+
+        Args:
+            user_id: The user identifier
+            recommendation: Recommendation dict
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.supabase.table("routine_recommendations").insert({
+                "user_id": user_id,
+                "title": recommendation.get("title"),
+                "message": recommendation.get("message"),
+                "reasoning": recommendation.get("reasoning"),
+                "routine_step_ref": recommendation.get("routine_step_ref"),
+                "recommendation_type": recommendation.get("recommendation_type"),
+                "status": "pending",
+                "created_at": recommendation.get("created_at")
+            }).execute()
+
+            print(f"[DB] Saved recommendation for {user_id}")
+            return True
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to save recommendation: {str(e)}")
+            return False
+
+    def update_recommendation_status(self, recommendation_id: str, status: str) -> bool:
+        """
+        Update a recommendation's status (accepted/dismissed).
+
+        Args:
+            recommendation_id: The recommendation UUID
+            status: 'accepted' or 'dismissed'
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            from datetime import datetime, timezone
+            self.supabase.table("routine_recommendations").update({
+                "status": status,
+                "decided_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", recommendation_id).execute()
+
+            print(f"[DB] Updated recommendation {recommendation_id} to {status}")
+            return True
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to update recommendation: {str(e)}")
+            return False
+
+    def delete_push_subscription(self, user_id: str) -> bool:
+        """
+        Delete all push subscriptions for a user.
+
+        Args:
+            user_id: The user identifier
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.supabase.table("push_subscriptions").delete() \
+                .eq("user_id", user_id).execute()
+
+            print(f"[DB] Deleted push subscriptions for {user_id}")
+            return True
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to delete push subscriptions: {str(e)}")
+            return False
+
 # Global singleton instance
 _db_instance: Optional[DatabaseService] = None
 
 def get_db() -> DatabaseService:
     """
     Get the global database service instance.
-    
+
     Returns:
         The DatabaseService singleton
     """

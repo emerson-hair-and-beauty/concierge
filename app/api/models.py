@@ -98,3 +98,41 @@ class LocationUpdateRequest(BaseModel):
     user_id: str
     location: str
 
+# ============================================
+# Recommendations Models
+# ============================================
+
+class Recommendation(BaseModel):
+    """A single routine recommendation"""
+    id: Optional[str] = Field(None, description="UUID of the recommendation")
+    user_id: str
+    title: str = Field(..., description="Short title, e.g. 'Try a hydrating mask'")
+    message: str = Field(..., description="The recommendation message")
+    reasoning: Optional[str] = Field(None, description="Why this recommendation (e.g. 'Your moisture has been declining')")
+    routine_step_ref: Optional[str] = Field(None, description="Which routine step this affects (optional)")
+    recommendation_type: str = Field(..., description="Type: environmental | signal | habit")
+    status: str = Field(default="pending", description="pending | accepted | dismissed")
+    created_at: Optional[str] = Field(None, description="ISO timestamp")
+    decided_at: Optional[str] = Field(None, description="ISO timestamp when user made decision")
+
+class RecommendationsRequest(BaseModel):
+    """Input schema for POST /api/recommendations/{user_id}"""
+    user_id: str
+
+class RecommendationsResponse(BaseModel):
+    """Output schema for GET /api/recommendations/{user_id}"""
+    status: str
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    message: Optional[str] = None
+
+class RecommendationDecisionRequest(BaseModel):
+    """Input schema for PATCH /api/recommendations/{recommendation_id}"""
+    status: str = Field(..., description="accepted | dismissed")
+
+class PushSubscriptionRequest(BaseModel):
+    """Input schema for POST /api/push/subscribe"""
+    user_id: str
+    endpoint: str
+    p256dh: str
+    auth: str
+

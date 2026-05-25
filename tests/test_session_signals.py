@@ -47,6 +47,7 @@ def print_signals(snapshot: dict):
         marker = "● ACTIVE" if snapshot.get(k) else "○ clear"
         print(f"│  {k:<22} {marker}")
     print(f"│  confidence:          {snapshot.get('confidence_score', 0.0):.2f}")
+    print(f"│  fallback used:       {'yes' if snapshot.get('fallback_used') else 'no'}")
     if snapshot.get("evidence_quote"):
         print(f"│  evidence: \"{snapshot['evidence_quote']}\"")
     if active:

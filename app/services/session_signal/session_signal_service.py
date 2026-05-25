@@ -15,4 +15,5 @@ async def process_session_signals(
     snapshot = get_session_snapshot(session_id)
     snapshot["confidence_score"] = detected.get("confidence_score", 0.0)
     snapshot["evidence_quote"] = detected.get("evidence_quote", "")
+    snapshot["fallback_used"] = detected.get("fallback_used", False)
     return snapshot
