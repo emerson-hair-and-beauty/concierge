@@ -39,7 +39,7 @@ async def query_products(query_text, top_k=5):
     client = genai.Client(api_key=GEMINI_API_KEY)
     try:
         response = await client.aio.models.embed_content(
-            model="text-embedding-004",
+            model="models/gemini-embedding-001",
             contents=query_text,
             config={
                 "output_dimensionality": 384
@@ -81,7 +81,7 @@ async def query_products(query_text, top_k=5):
     
     # Extract usage if available
     embedding_usage = {
-        "model": "text-embedding-004",
+        "model": "gemini-embedding-001",
         "usage": {
             "prompt_tokens": 0,
             "total_tokens": 0

@@ -141,6 +141,66 @@ class LibrarianService:
         else:
             return "just now"
     
+    async def build_greeting(self, events: List[Dict]) -> Optional[str]:
+        """
+        Build a personalised welcome-back greeting via a single LLM call.
+        Returns None if the user has no history (first-time user).
+        Falls back to a simple template if the LLM call fails.
+        """
+        if not events:
+            return None
+
+        latest = events[0]
+        summary = latest.get("summary", "") or ""
+        label   = latest.get("primary_label", "hair health")
+        created_at_raw = latest.get("created_at", "")
+
+        try:
+            created_at = datetime.fromisoformat(created_at_raw.replace("Z", "+00:00"))
+            time_ago = self._format_time_ago(created_at)
+        except Exception:
+            time_ago = "recently"
+
+        label_friendly_map = {
+            "MOISTURE":   "moisture",
+            "SCALP":      "scalp",
+            "DEFINITION": "definition",
+            "BREAKAGE":   "breakage",
+        }
+        area = label_friendly_map.get(label.upper(), "hair health")
+
+        prompt = f"""You are a warm, expert hair concierge welcoming back a client.
+
+Their last recorded concern ({time_ago}):
+- Area: {area}
+- Notes: {summary[:300] if summary else 'No specific notes recorded.'}
+
+Write a greeting that:
+1. Opens with "Welcome back."
+2. Briefly and naturally references their last concern — rewrite any raw notes into warm, human language. Do NOT quote the notes verbatim.
+3. Ends with: "Would you like to pick up where we left off with your {area}, or is there something new on your mind today?"
+
+Maximum 3 sentences. Warm, expert tone. No markdown."""
+
+        try:
+            from app.agents.llm_call.llm_call import run_llm_agent
+            full_text = ""
+            async for chunk in run_llm_agent(prompt, model="gemini-2.0-flash-lite"):
+                if chunk.get("type") == "content":
+                    full_text += chunk.get("content", "")
+            greeting = full_text.strip()
+            if greeting:
+                return greeting
+        except Exception as e:
+            print(f"[LIBRARIAN] LLM greeting failed, using fallback: {e}")
+
+        # Fallback: simple template
+        return (
+            f"Welcome back. Last time we spoke, {time_ago}, we were looking into your {area}. "
+            f"Would you like to pick up where we left off with your {area}, or is there something new on your mind today?"
+        )
+
+
     def categorize_vital(self, target_vital: str) -> str:
         """
         Map target_vital to a core category.

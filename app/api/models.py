@@ -8,12 +8,26 @@ from datetime import datetime
 # ============================================
 
 class OrchestratorInput(BaseModel):
-    porosity: str
-    scalp: str
-    damage: str
-    density: str
+    # Core hair profile (classifiers / guardrails)
     texture: str
-    user_id: Optional[str] = None # Added for routine persistence
+    density: str
+    moisture_behaviour: str         # Renamed from 'porosity' — maps to classify_porosity internally
+    porosity: Optional[str] = None  # Kept for backward compatibility; overrides moisture_behaviour if provided
+    scalp: Optional[str] = None     # Kept for backward compatibility; not surfaced in new onboarding
+    damage: Optional[str] = None    # Kept for backward compatibility; not surfaced in new onboarding
+
+    # New onboarding fields
+    humidity_response: Optional[str] = None  # Climate-specific field (GCC context)
+    hair_goals: Optional[List[str]] = None   # Primary routine objective (multi-select)
+
+    # User identity fields (persisted to user_metadata)
+    first_name: Optional[str] = None
+    location: Optional[str] = None
+    gender: Optional[str] = None
+    email: Optional[str] = None
+    hair_length: Optional[str] = None
+
+    user_id: Optional[str] = None  # Firebase user ID
 
 # ============================================
 # Empath Diagnostic Engine Models
@@ -74,3 +88,51 @@ class SaveEventRequest(BaseModel):
     keywords: List[str] = Field(default_factory=list)
     wash_day_number: Optional[int] = None
     day_in_cycle: Optional[int] = None
+
+class WashEventRequest(BaseModel):
+    """Input schema for POST /api/user/wash"""
+    user_id: str
+
+class LocationUpdateRequest(BaseModel):
+    """Input schema for POST /api/user/location"""
+    user_id: str
+    location: str
+
+# ============================================
+# Recommendations Models
+# ============================================
+
+class Recommendation(BaseModel):
+    """A single routine recommendation"""
+    id: Optional[str] = Field(None, description="UUID of the recommendation")
+    user_id: str
+    title: str = Field(..., description="Short title, e.g. 'Try a hydrating mask'")
+    message: str = Field(..., description="The recommendation message")
+    reasoning: Optional[str] = Field(None, description="Why this recommendation (e.g. 'Your moisture has been declining')")
+    routine_step_ref: Optional[str] = Field(None, description="Which routine step this affects (optional)")
+    recommendation_type: str = Field(..., description="Type: environmental | signal | habit")
+    status: str = Field(default="pending", description="pending | accepted | dismissed")
+    created_at: Optional[str] = Field(None, description="ISO timestamp")
+    decided_at: Optional[str] = Field(None, description="ISO timestamp when user made decision")
+
+class RecommendationsRequest(BaseModel):
+    """Input schema for POST /api/recommendations/{user_id}"""
+    user_id: str
+
+class RecommendationsResponse(BaseModel):
+    """Output schema for GET /api/recommendations/{user_id}"""
+    status: str
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    message: Optional[str] = None
+
+class RecommendationDecisionRequest(BaseModel):
+    """Input schema for PATCH /api/recommendations/{recommendation_id}"""
+    status: str = Field(..., description="accepted | dismissed")
+
+class PushSubscriptionRequest(BaseModel):
+    """Input schema for POST /api/push/subscribe"""
+    user_id: str
+    endpoint: str
+    p256dh: str
+    auth: str
+

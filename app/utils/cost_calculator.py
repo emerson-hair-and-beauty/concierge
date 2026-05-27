@@ -5,7 +5,7 @@ PRICING = {
         "input_price_per_million": 0.075,
         "output_price_per_million": 0.30
     },
-    "text-embedding-004": {
+    "gemini-embedding-001": {
         "price_per_thousand": 0.00001
     }
 }

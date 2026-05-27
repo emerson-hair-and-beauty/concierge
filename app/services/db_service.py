@@ -314,6 +314,227 @@ class DatabaseService:
             print(f"[DB ERROR] Failed to retrieve routine: {str(e)}")
             return None
 
+    def get_all_users(self) -> List[Dict]:
+        """
+        Retrieve all users from metadata table, presumably to run cron jobs over them.
+        Returns: List of user dictionaries.
+        """
+        try:
+            response = self.supabase.table("user_metadata").select("*").execute()
+            print(f"[DB] Retrieved {len(response.data) if response.data else 0} users from metadata")
+            return response.data or []
+        except Exception as e:
+            print(f"[DB ERROR] Failed to retrieve users: {str(e)}")
+            return []
+
+    def get_user_metadata(self, user_id: str) -> Optional[Dict]:
+        """Fetch a single user's metadata row (location, goals, etc.)."""
+        try:
+            response = (
+                self.supabase.table("user_metadata")
+                .select("*")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            rows = response.data or []
+            return rows[0] if rows else None
+        except Exception as e:
+            print(f"[DB ERROR] Failed to fetch user metadata: {str(e)}")
+            return None
+            
+    def log_wash_event(self, user_id: str) -> bool:
+        """
+        Log an explicit wash event directly to the wash_logs table.
+        """
+        try:
+            self.supabase.table("wash_logs").insert({"user_id": user_id}).execute()
+            print(f"[DB] Logged wash event for user {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to log wash event: {str(e)}")
+            return False
+
+    def get_latest_wash_events(self, user_id: str, limit: int = 10) -> List[Dict]:
+        """
+        Fetch explicit wash log records for a given user.
+        """
+        try:
+            response = self.supabase.table("wash_logs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+            return response.data or []
+        except Exception as e:
+            print(f"[DB ERROR] Failed to fetch wash logs: {str(e)}")
+            return []
+
+    def update_user_location(self, user_id: str, location: str) -> bool:
+        """
+        Update a user's geolocation string explicitly in user_metadata.
+        """
+        try:
+            # upsert since location is prime metadata
+            self.supabase.table("user_metadata").upsert({
+                "user_id": user_id,
+                "location": location
+            }).execute()
+            print(f"[DB] Updated location for user {user_id}: {location}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to update user location: {str(e)}")
+            return False
+
+    def get_pending_alerts(self, user_id: str, limit: int = 3) -> List[Dict]:
+        """
+        Fetch unread alerts for the user, ordered by most recent.
+        Reads from the unified alert_log table; legacy contract preserved.
+        """
+        from app.services.alerts.alert_state import get_unread_alerts
+        return get_unread_alerts(user_id, limit=limit)
+
+    def mark_alert_read(self, alert_id: str) -> bool:
+        """Mark a specific alert as read in alert_log."""
+        from app.services.alerts.alert_state import mark_read
+        return mark_read(alert_id)
+
+
+    def save_user_profile(self, user_id: str, profile_data: Dict) -> bool:
+        """
+        Save or update a user's profile metadata collected during onboarding.
+        
+        Args:
+            user_id: The user identifier
+            profile_data: Dictionary containing profile fields (first_name, location, goals, etc.)
+        """
+        try:
+            # Ensure user_id is in the payload for the upsert
+            payload = {"user_id": user_id, **profile_data}
+            
+            # Upsert into user_metadata table (creates new or updates existing)
+            self.supabase.table("user_metadata").upsert(payload).execute()
+            print(f"[DB] Saved user profile for {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to save user profile: {str(e)}")
+            return False
+
+    def save_routine(self, user_id: str, routine_data: Dict) -> bool:
+        """
+        Save a generated routine to the user's metadata profile.
+        
+        Args:
+            user_id: The user identifier
+            routine_data: Dictionary containing the generated routine and products
+        """
+        try:
+            payload = {"user_id": user_id, "routine": routine_data}
+            
+            # Upsert into user_metadata table
+            self.supabase.table("user_metadata").upsert(payload).execute()
+            print(f"[DB] Saved routine for {user_id}")
+            return True
+        except Exception as e:
+            print(f"[DB ERROR] Failed to save routine: {str(e)}")
+            return False
+
+    def get_pending_recommendations(self, user_id: str) -> List[Dict]:
+        """
+        Fetch pending (not yet accepted/dismissed) recommendations for a user.
+
+        Args:
+            user_id: The user identifier
+
+        Returns:
+            List of pending recommendation dicts
+        """
+        try:
+            response = self.supabase.table("routine_recommendations") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .eq("status", "pending") \
+                .order("created_at", desc=True) \
+                .execute()
+
+            print(f"[DB] Retrieved {len(response.data or [])} pending recommendations for {user_id}")
+            return response.data or []
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to fetch recommendations: {str(e)}")
+            return []
+
+    def save_recommendation(self, user_id: str, recommendation: Dict) -> bool:
+        """
+        Save a recommendation to the database.
+
+        Args:
+            user_id: The user identifier
+            recommendation: Recommendation dict
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.supabase.table("routine_recommendations").insert({
+                "user_id": user_id,
+                "title": recommendation.get("title"),
+                "message": recommendation.get("message"),
+                "reasoning": recommendation.get("reasoning"),
+                "routine_step_ref": recommendation.get("routine_step_ref"),
+                "recommendation_type": recommendation.get("recommendation_type"),
+                "status": "pending",
+                "created_at": recommendation.get("created_at")
+            }).execute()
+
+            print(f"[DB] Saved recommendation for {user_id}")
+            return True
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to save recommendation: {str(e)}")
+            return False
+
+    def update_recommendation_status(self, recommendation_id: str, status: str) -> bool:
+        """
+        Update a recommendation's status (accepted/dismissed).
+
+        Args:
+            recommendation_id: The recommendation UUID
+            status: 'accepted' or 'dismissed'
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            from datetime import datetime, timezone
+            self.supabase.table("routine_recommendations").update({
+                "status": status,
+                "decided_at": datetime.now(timezone.utc).isoformat()
+            }).eq("id", recommendation_id).execute()
+
+            print(f"[DB] Updated recommendation {recommendation_id} to {status}")
+            return True
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to update recommendation: {str(e)}")
+            return False
+
+    def delete_push_subscription(self, user_id: str) -> bool:
+        """
+        Delete all push subscriptions for a user.
+
+        Args:
+            user_id: The user identifier
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            self.supabase.table("push_subscriptions").delete() \
+                .eq("user_id", user_id).execute()
+
+            print(f"[DB] Deleted push subscriptions for {user_id}")
+            return True
+
+        except Exception as e:
+            print(f"[DB ERROR] Failed to delete push subscriptions: {str(e)}")
+            return False
 
 # Global singleton instance
 _db_instance: Optional[DatabaseService] = None
@@ -321,7 +542,7 @@ _db_instance: Optional[DatabaseService] = None
 def get_db() -> DatabaseService:
     """
     Get the global database service instance.
-    
+
     Returns:
         The DatabaseService singleton
     """

@@ -3,7 +3,7 @@ Problem Statement
 Currently, the application makes multiple API calls to Google's Gemini API but doesn't track token usage:
 
 LLM streaming calls for routine generation (using gemini-2.5-flash-lite)
-Embedding calls for RAG product recommendations (using text-embedding-004)
+Embedding calls for RAG product recommendations (using gemini-embedding-001)
 Without tracking, we cannot:
 
 Monitor API costs
@@ -128,7 +128,7 @@ Cost Estimation (Optional Enhancement)
 Based on current Gemini API pricing (as of Jan 2026):
 
 gemini-2.5-flash-lite: ~$0.075 per 1M input tokens, ~$0.30 per 1M output tokens
-text-embedding-004: ~$0.00001 per 1K tokens
+gemini-embedding-001: ~$0.00001 per 1K tokens
 We can add a cost calculator utility to provide real-time cost estimates.
 
 Implementation Order
