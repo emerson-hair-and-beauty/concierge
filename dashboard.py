@@ -103,7 +103,7 @@ st.markdown("""
     .response-box {
         background: #f9f9f9; border-left: 4px solid #7c4dff;
         padding: 16px 20px; border-radius: 8px;
-        font-size: 15px; line-height: 1.7;
+        font-size: 15px; line-height: 1.7; color: #1a1a1a;
     }
     .signal-active { color: #2e7d32; font-weight: bold; }
     .signal-inactive { color: #aaa; }
