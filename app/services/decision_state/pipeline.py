@@ -13,6 +13,8 @@ from app.services.decision_state.decision_engine import build_strategy_payload
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.decision_state.response_composer import compose_response
 from app.agents.recommendation.lib.knowledge_base.query_products import query_products
+from app.services.clarification.clarification_generator import generate_clarification
+from app.services.session_signal.signal_detector import SIGNAL_NAMES
 
 
 _PRODUCT_QUERY_TEMPLATES = {
@@ -82,6 +84,18 @@ async def run_concierge_pipeline(
     signal_snapshot, session_intent = await asyncio.gather(signal_task, intent_task)
 
     print(f"[Pipeline] signal={signal_snapshot} | intent={session_intent}")
+
+    # --- Clarification gate: ask if we genuinely can't read the signal ---
+    no_active_signals = not any(signal_snapshot.get(k) for k in SIGNAL_NAMES)
+    low_confidence = signal_snapshot.get("confidence_score", 0) < 0.5
+    if no_active_signals and low_confidence:
+        print("[Pipeline] Inconclusive signals — generating clarification request")
+        clarification = await generate_clarification(messages)
+        yield json.dumps({
+            "type": "clarification",
+            "content": clarification.model_dump(),
+        }) + "\n"
+        return
 
     # --- Phase 2: Decision Engine (pure rules, instant) ---
     from app.services.decision_state.models import SessionSignal

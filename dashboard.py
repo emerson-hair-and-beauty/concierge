@@ -155,6 +155,8 @@ if "last_result" not in st.session_state:
     st.session_state.last_result = None
 if "feedback_given" not in st.session_state:
     st.session_state.feedback_given = False
+if "pending_clarification" not in st.session_state:
+    st.session_state.pending_clarification = None
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +170,19 @@ st.caption("Type a hair concern below. The dashboard shows every decision the AI
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
+
+# ── Clarification MCQ (shown when signal detection was inconclusive) ──────────
+if st.session_state.pending_clarification:
+    clar = st.session_state.pending_clarification
+    with st.chat_message("assistant"):
+        st.markdown(f"**{clar['question']}**")
+        option_labels = [opt["label"] for opt in clar["options"]]
+        selected = st.radio("", option_labels, key="clarification_radio", label_visibility="collapsed")
+        if st.button("That sounds right →", type="primary"):
+            st.session_state.messages.append({"role": "user", "content": selected})
+            st.session_state.pending_clarification = None
+            st.rerun()
+    st.stop()
 
 # Input
 user_input = st.chat_input("Type a hair concern...")
@@ -206,6 +221,17 @@ if user_input:
         c1, c2 = st.columns(2)
         c1.caption(f"Confidence: {signals_raw.get('confidence_score', 0):.0%}")
         c2.caption(f"Fallback used: {'yes' if signals_raw.get('fallback_used') else 'no'}")
+
+    # ── Clarification gate ────────────────────────────────────────────────
+    _signal_keys = ["breakage_active", "absorption_blocked", "buildup_present", "hold_loss", "coated_feel"]
+    _no_signals   = not any(signals_raw.get(k) for k in _signal_keys)
+    _low_conf     = signals_raw.get("confidence_score", 0) < 0.5
+    if _no_signals and _low_conf:
+        from app.services.clarification.clarification_generator import generate_clarification
+        with st.spinner("Generating clarifying question..."):
+            _clar = run_async(generate_clarification(messages))
+        st.session_state.pending_clarification = _clar.model_dump()
+        st.rerun()
 
     # ── Step 2: Intent Detection ──────────────────────────────────────────
     with st.expander("🧠 Step 2 — How is the user engaging?", expanded=True):

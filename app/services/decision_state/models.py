@@ -145,3 +145,17 @@ class ResponseComposerInput(BaseModel):
     candidate_products: List[dict] = []          # filtered products from Pinecone
     recent_messages: List[dict] = []             # last N turns — composer must read user's actual words
     conversation_summary: Optional[str] = None   # from Librarian / memory layer
+
+
+# ---------------------------------------------------------------------------
+# Clarification layer (emitted when signal detection is inconclusive)
+# ---------------------------------------------------------------------------
+
+class ClarificationOption(BaseModel):
+    label: str                          # plain-language option shown to the user
+    signal_hint: Optional[str] = None  # which signal this answer implies, if any
+
+
+class ClarificationRequest(BaseModel):
+    question: str
+    options: List[ClarificationOption]
