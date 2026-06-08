@@ -131,6 +131,7 @@ async def run_concierge_pipeline(
         strategy_payload=strategy_payload,
         jte_delivery_plan=delivery_plan,
         profile_state=profile,
+        env=env,
         candidate_products=candidate_products,
         recent_messages=messages[-6:],
         conversation_summary=conversation_summary,

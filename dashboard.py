@@ -299,6 +299,15 @@ if user_input:
         c2.metric("Product exposure", delivery.product_exposure)
         c3.metric("Ask strategy",    delivery.ask_strategy.replace("_", " "))
 
+        _structure_map = {
+            "educate":      "Observation → Interpretation → Recommendation → Why",
+            "troubleshoot": "What is Happening → Most Likely Cause → What to Change First → What to Monitor",
+            "convert":      "Problem → Desired Outcome → Why Product Fits → How to Use",
+            "reassure":     "What is Working → Evidence → Why Consistency Matters → Optional Optimisation",
+            "compare":      "Observation → Options & Trade-offs → Recommendation → Why",
+        }
+        st.caption(f"**Response structure:** {_structure_map.get(delivery.response_mode, 'Standard')}")
+
     # ── Step 5: Products ──────────────────────────────────────────────────
     candidate_products = []
     with st.expander("🛍️ Step 5 — Product search", expanded=True):
@@ -327,6 +336,7 @@ if user_input:
         strategy_payload=strategy,
         jte_delivery_plan=delivery,
         profile_state=profile,
+        env=env,
         candidate_products=candidate_products,
         recent_messages=messages[-6:],
     )

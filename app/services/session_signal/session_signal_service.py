@@ -9,21 +9,13 @@ async def process_session_signals(
     session_id: str,
     messages: List[Dict[str, str]],
 ) -> Dict[str, bool]:
-    # Check what we already know for this session
-    existing = get_session_snapshot(session_id)
-    already_active = any(existing.get(k) for k in SIGNAL_NAMES)
-
-    if already_active:
-        # Signals are already established — don't re-run detection, move forward
-        print(f"[SessionSignal] Active signals already on record, skipping detection.")
-        existing["confidence_score"] = 1.0
-        existing["evidence_quote"] = ""
-        existing["fallback_used"] = False
-        return existing
-
+    # Always run detection — new signals can surface at any turn
+    # log_new_signals is additive: it only persists signals not already on record
     window = messages[-10:]
     detected = await detect_signals(window)
     log_new_signals(user_id, session_id, detected)
+
+    # Snapshot merges everything logged so far in this session
     snapshot = get_session_snapshot(session_id)
     snapshot["confidence_score"] = detected.get("confidence_score", 0.0)
     snapshot["evidence_quote"] = detected.get("evidence_quote", "")

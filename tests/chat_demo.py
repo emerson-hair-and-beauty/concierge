@@ -13,15 +13,15 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.services.decision_state.models import ProfileState, EnvironmentalContext
-from app.services.session_signal.signal_detector import detect_signals
+from app.services.session_signal.signal_detector import detect_signals, SIGNAL_NAMES
 from app.services.session_intent.intent_detector import detect_intent
 from app.services.decision_state.decision_engine import build_strategy_payload
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.decision_state.models import SessionSignal, ResponseComposerInput
 from app.services.decision_state.response_composer import compose_response
 from app.agents.recommendation.lib.knowledge_base.query_products import query_products
-from app.services.decision_state.decision_engine import build_strategy_payload
 from app.services.session_intent.session_intent_service import process_session_intent
+from app.services.clarification.clarification_generator import generate_clarification
 
 # ---------------------------------------------------------------------------
 # Pick a profile to demo with — swap as needed
@@ -65,6 +65,14 @@ ENV = EnvironmentalContext(
     sweat_freq="high",
 )
 
+_RESPONSE_STRUCTURES = {
+    "educate":      "Observation → Interpretation → Recommendation → Why",
+    "troubleshoot": "What is Happening → Most Likely Cause → What to Change First → What to Monitor",
+    "convert":      "Problem → Desired Outcome → Why Product Fits → How to Use",
+    "reassure":     "What is Working → Evidence → Why Consistency Matters → Optional Optimisation",
+    "compare":      "Observation → Options & Trade-offs → Recommendation → Why",
+}
+
 
 def divider(label: str):
     print(f"\n{'─' * 60}")
@@ -91,28 +99,57 @@ def pick_profile() -> ProfileState:
         print("  Please enter 1, 2, or 3.")
 
 
-async def run_turn(messages: list, profile: ProfileState):
+async def ask_clarification(messages: list) -> str | None:
+    """Show MCQ in terminal. Returns the selected option text, or None to skip."""
+    clarification = await generate_clarification(messages)
+    print(f"\n  Emerson: {clarification.question}\n")
+    for i, opt in enumerate(clarification.options, 1):
+        print(f"  [{i}]  {opt.label}")
+    print()
+    while True:
+        raw = input("  Choose an option (or press Enter to skip): ").strip()
+        if not raw:
+            return None
+        if raw.isdigit() and 1 <= int(raw) <= len(clarification.options):
+            return clarification.options[int(raw) - 1].label
+        print(f"  Please enter a number between 1 and {len(clarification.options)}.")
+
+
+async def run_turn(messages: list, profile: ProfileState) -> bool:
+    """Returns False if clarification was requested (turn not complete yet)."""
     divider("WHAT THE AI IS DOING")
 
-    # Step 1
+    # Step 1 — Signal detection
     print("\n  Step 1 — Detecting hair signals...")
     signals_raw = await detect_signals(messages)
-    active = [k for k in ["breakage_active", "absorption_blocked", "buildup_present", "hold_loss", "coated_feel"] if signals_raw.get(k)]
+    active = [k for k in SIGNAL_NAMES if signals_raw.get(k)]
     if active:
         print(f"  Active signals : {', '.join(active)}")
     else:
         print(f"  Active signals : none detected")
     if signals_raw.get("evidence_quote"):
         print(f"  Evidence       : \"{signals_raw['evidence_quote']}\"")
+    print(f"  Confidence     : {signals_raw.get('confidence_score', 0):.0%}"
+          f"  |  Fallback used: {'yes' if signals_raw.get('fallback_used') else 'no'}")
 
-    # Step 2
+    # Clarification gate
+    no_signals   = not any(signals_raw.get(k) for k in SIGNAL_NAMES)
+    low_conf     = signals_raw.get("confidence_score", 0) < 0.5
+    if no_signals and low_conf:
+        print("\n  [Clarification] Signal inconclusive — asking a follow-up question...")
+        selected = await ask_clarification(messages)
+        if selected:
+            messages.append({"role": "user", "content": selected})
+        return False  # caller will re-run with enriched messages
+
+    # Step 2 — Intent
     print("\n  Step 2 — Reading the conversation tone...")
     intent_raw = await detect_intent(messages)
     print(f"  Journey state  : {intent_raw['journey_state']}")
     print(f"  Emotional state: {intent_raw['emotional_state']}")
     print(f"  Friction       : {intent_raw['friction_score']}")
 
-    # Step 3
+    # Step 3 — Decision engine
     print("\n  Step 3 — Decision engine running...")
     session_signal = SessionSignal(**{k: signals_raw.get(k, False) for k in SessionSignal.model_fields if k in signals_raw})
     session_intent = await process_session_intent(messages)
@@ -120,15 +157,17 @@ async def run_turn(messages: list, profile: ProfileState):
     print(f"  Decision state : {strategy.decision_state}")
     print(f"  Routine plan   : {', '.join(strategy.routine_constraints.mandatory_steps)}")
 
-    # Step 4
+    # Step 4 — JTE
     print("\n  Step 4 — Journey Transition Engine...")
     delivery = resolve_delivery_plan(strategy.jte_input, strategy.decision_state)
     print(f"  Readiness      : {delivery.readiness_band} (score: {delivery.readiness_score})")
+    print(f"  Response mode  : {delivery.response_mode}")
+    print(f"  Structure      : {_RESPONSE_STRUCTURES.get(delivery.response_mode, 'Standard')}")
     print(f"  Tone           : {delivery.tone_profile}")
     print(f"  Depth          : {delivery.response_depth}")
     print(f"  Products       : {delivery.product_exposure}")
 
-    # Step 5
+    # Step 5 — Products
     candidate_products = []
     if delivery.product_exposure != "hidden":
         print("\n  Step 5 — Searching product catalogue...")
@@ -143,7 +182,7 @@ async def run_turn(messages: list, profile: ProfileState):
     else:
         print("\n  Step 5 — Products: not surfacing yet (building trust first)")
 
-    # Step 6
+    # Step 6 — Response
     divider("EMERSON'S RESPONSE")
     print()
 
@@ -151,6 +190,7 @@ async def run_turn(messages: list, profile: ProfileState):
         strategy_payload=strategy,
         jte_delivery_plan=delivery,
         profile_state=profile,
+        env=ENV,
         candidate_products=candidate_products,
         recent_messages=messages[-6:],
     )
@@ -160,6 +200,7 @@ async def run_turn(messages: list, profile: ProfileState):
             print(chunk["content"], end="", flush=True)
 
     print("\n")
+    return True
 
 
 async def main():
@@ -187,10 +228,13 @@ async def main():
 
         messages.append({"role": "user", "content": user_input})
 
-        await run_turn(messages, profile)
+        # Re-run if clarification was requested (enriched message already appended)
+        complete = await run_turn(messages, profile)
+        if not complete:
+            complete = await run_turn(messages, profile)
 
-        # Add a placeholder assistant turn so signal detection has context next round
-        messages.append({"role": "assistant", "content": "[response delivered]"})
+        if complete:
+            messages.append({"role": "assistant", "content": "[response delivered]"})
 
 
 if __name__ == "__main__":

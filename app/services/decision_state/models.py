@@ -142,6 +142,7 @@ class ResponseComposerInput(BaseModel):
     strategy_payload: StrategyPayload
     jte_delivery_plan: JTEDeliveryPlan
     profile_state: ProfileState
+    env: Optional["EnvironmentalContext"] = None  # climate context for GCC-aware responses
     candidate_products: List[dict] = []          # filtered products from Pinecone
     recent_messages: List[dict] = []             # last N turns — composer must read user's actual words
     conversation_summary: Optional[str] = None   # from Librarian / memory layer

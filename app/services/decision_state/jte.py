@@ -44,8 +44,12 @@ def resolve_delivery_plan(jte_input: JTEInput, decision_state: str | None) -> JT
         response_depth = "long"
         cta_pressure = "none"
         product_exposure = "selective"
-        tone_profile = "expert_calm"
         ask_strategy = "proceed_with_best_guess"
+        # Tone adapts to emotional state even inside repair/reset
+        if emotion in ("frustrated", "fatigued") or readiness_band == "low":
+            tone_profile = "warm_reassuring"
+        else:
+            tone_profile = "expert_calm"
 
     elif decision_state == "simplify_friction":
         response_mode = "reassure"

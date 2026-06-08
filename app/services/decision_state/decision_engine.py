@@ -31,14 +31,24 @@ def _resolve_hard_override(
     env: EnvironmentalContext,
     profile: ProfileState,
 ) -> str | None:
-    if signal.breakage_active or profile.elasticity == "low":
+    # Active breakage always takes top priority — structural damage first
+    if signal.breakage_active:
         return "repair_first"
+
+    # Reset signals: waxy coat, buildup, blocked absorption, hard water
+    # These win even on a low-elasticity profile — you can't repair through a coat
     if (
         signal.buildup_present
+        or signal.coated_feel
         or signal.absorption_blocked
         or env.hard_water
     ):
         return "reset_first"
+
+    # Profile baseline: low elasticity nudges toward repair only when no live signal fired
+    if profile.elasticity == "low":
+        return "repair_first"
+
     return None
 
 
@@ -150,7 +160,7 @@ def _resolve_secondary_state(
 ) -> str | None:
     if intent.friction_score == "high" or intent.confidence_level == "overwhelmed":
         return "simplify_friction"
-    if signal.hold_loss and env.humidity_level == "high":
+    if signal.hold_loss:
         return "hold_first"
     return "balanced_routine_first"
 
