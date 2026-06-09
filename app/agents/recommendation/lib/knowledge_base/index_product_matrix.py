@@ -1,7 +1,7 @@
 """
 Re-indexes the Emerson product catalogue from the Product Matrix Excel file.
 - Source  : Summary sheet (per-product flags, metadata, usage context)
-- Embeddings : Gemini gemini-embedding-001 @ 384 dims (matches query_products.py)
+- Embeddings : provider.embed() — respects LLM_PROVIDER setting @ 384 dims
 - Destination: Pinecone index (replaces all existing vectors)
 
 Run from the project root:
@@ -15,16 +15,13 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../")))
 
 import openpyxl
-from google import genai
-from app.config import GEMINI_API_KEY
+from app.agents.llm_call.provider import embed
 from app.pinecone_config import get_pinecone_index
 
 EXCEL_PATH = os.path.join(
     os.path.dirname(__file__),
     "../../../../../Emerson Product Matrix_Master_File_Updated (1).xlsx"
 )
-
-_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ---------------------------------------------------------------------------
 # Column index map (0-based, from Summary sheet row 7 headers)
@@ -189,14 +186,10 @@ def load_products_from_excel(path: str) -> list[dict]:
 
 
 async def embed_products(products: list[dict]) -> list[dict]:
-    print(f"[Indexer] Generating Gemini embeddings for {len(products)} products...")
+    from app.config import LLM_PROVIDER
+    print(f"[Indexer] Generating embeddings ({LLM_PROVIDER}) for {len(products)} products...")
     for i, product in enumerate(products):
-        response = await _client.aio.models.embed_content(
-            model="models/gemini-embedding-001",
-            contents=product["content"],
-            config={"output_dimensionality": 384},
-        )
-        product["vector"] = response.embeddings[0].values
+        product["vector"] = await embed(product["content"])
         if (i + 1) % 10 == 0:
             print(f"[Indexer]   {i + 1}/{len(products)} embedded...")
     print(f"[Indexer] All embeddings generated.")
