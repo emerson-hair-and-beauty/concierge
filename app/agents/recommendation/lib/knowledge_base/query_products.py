@@ -27,33 +27,18 @@ sys.path.append(project_root)
 
 
 from app.pinecone_config import get_pinecone_index
-from app.config import GEMINI_API_KEY
-from google import genai
+from app.agents.llm_call.provider import embed
 
 async def query_products(query_text, top_k=5):
     """
     Query Pinecone index for top_k most relevant products.
     """
-    print(f"--> Quering products for: {query_text[:50]}...")
-    # 1️⃣ Encode query using Gemini API (Async)
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    print(f"--> Querying products for: {query_text[:50]}...")
     try:
-        response = await client.aio.models.embed_content(
-            model="models/gemini-embedding-001",
-            contents=query_text,
-            config={
-                "output_dimensionality": 384
-            }
-        )
-        print(f"DEBUG: Response object: {response}")
-        # print(f"DEBUG: Response keys/dir: {dir(response)}")
-        if hasattr(response, 'usage_metadata'):
-             print(f"DEBUG: usage_metadata: {response.usage_metadata}")
-             
-        query_vector = response.embeddings[0].values
+        query_vector = await embed(query_text)
         print(f"--> Embedding generated, size: {len(query_vector)}")
     except Exception as e:
-        print(f"ERROR in embed_content: {str(e)}")
+        print(f"ERROR in embed: {str(e)}")
         raise e
 
     # 2️⃣ Query Pinecone (Sync call in Thread)
@@ -79,23 +64,7 @@ async def query_products(query_text, top_k=5):
             "content": match.metadata.get("content", "")
         })
     
-    # Extract usage if available
-    embedding_usage = {
-        "model": "gemini-embedding-001",
-        "usage": {
-            "prompt_tokens": 0,
-            "total_tokens": 0
-        }
-    }
-    
-    if response and hasattr(response, 'usage_metadata') and response.usage_metadata:
-        embedding_usage["usage"]["prompt_tokens"] = response.usage_metadata.prompt_token_count
-        embedding_usage["usage"]["total_tokens"] = response.usage_metadata.total_token_count
-
-    return {
-        "products": products,
-        "embedding_usage": embedding_usage
-    }
+    return {"products": products}
 
 
 # -----------------------------# Example usage

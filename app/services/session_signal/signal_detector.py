@@ -1,8 +1,6 @@
-import json
 from typing import List, Dict
 
-from google import genai
-from app.config import GEMINI_API_KEY
+from app.agents.llm_call.provider import generate_json
 
 SIGNAL_NAMES = [
     "absorption_blocked",
@@ -11,8 +9,6 @@ SIGNAL_NAMES = [
     "buildup_present",
     "coated_feel",
 ]
-
-_client = genai.Client(api_key=GEMINI_API_KEY)
 
 _DETECTION_PROMPT = """\
 Role: You are an expert Hair Health Analyst. Your goal is to map user complaints to specific hair health "Signals" with high precision.
@@ -70,38 +66,13 @@ Only flag a signal if you can reason a clear path from what the user said to wha
 User's message:
 {conversation}"""
 
-_RESPONSE_SCHEMA = {
-    "type": "OBJECT",
-    "properties": {
-        "absorption_blocked": {"type": "BOOLEAN"},
-        "hold_loss":          {"type": "BOOLEAN"},
-        "breakage_active":    {"type": "BOOLEAN"},
-        "buildup_present":    {"type": "BOOLEAN"},
-        "coated_feel":        {"type": "BOOLEAN"},
-        "confidence_score": {"type": "NUMBER", "minimum": 0.0, "maximum": 1.0},
-        "evidence_quote": {"type": "STRING"}
-    },
-    "required": SIGNAL_NAMES + ["confidence_score", "evidence_quote"],
-}
-
-_GEMINI_CONFIG = {
-    "response_mime_type": "application/json",
-    "response_schema": _RESPONSE_SCHEMA,
-}
-
-
 def _all_clear(signals: Dict) -> bool:
     return not any(signals.get(k, False) for k in SIGNAL_NAMES)
 
 
 async def _run_detection(prompt: str) -> Dict:
-    response = await _client.aio.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=prompt,
-        config=_GEMINI_CONFIG,
-    )
-    print(f"[SignalDetector] Raw response: {response.text}")
-    result = json.loads(response.text)
+    result = await generate_json(prompt)
+    print(f"[SignalDetector] Raw response: {result}")
     signals = {k: bool(result.get(k, False)) for k in SIGNAL_NAMES}
     signals["confidence_score"] = result.get("confidence_score", 0.0)
     signals["evidence_quote"] = result.get("evidence_quote", "")

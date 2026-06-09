@@ -1,11 +1,7 @@
-import json
 from typing import List, Dict
 
-from google import genai
-from app.config import GEMINI_API_KEY
+from app.agents.llm_call.provider import generate_json
 from app.services.decision_state.models import ClarificationOption, ClarificationRequest
-
-_client = genai.Client(api_key=GEMINI_API_KEY)
 
 _PROMPT = """\
 You are a friendly hair care expert helping a concierge understand what a customer is experiencing.
@@ -26,38 +22,7 @@ Rules:
     buildup_present    — scalp feels heavy, itchy, or like products have stopped working
     coated_feel        — hair feels waxy, filmy, or coated even though it looks fine
 
-Return valid JSON only:
-{{
-  "question": "...",
-  "options": [
-    {{"label": "...", "signal_hint": "signal_name_or_null"}},
-    ...
-  ]
-}}"""
-
-_RESPONSE_SCHEMA = {
-    "type": "OBJECT",
-    "properties": {
-        "question": {"type": "STRING"},
-        "options": {
-            "type": "ARRAY",
-            "items": {
-                "type": "OBJECT",
-                "properties": {
-                    "label":       {"type": "STRING"},
-                    "signal_hint": {"type": "STRING"},
-                },
-                "required": ["label"],
-            },
-        },
-    },
-    "required": ["question", "options"],
-}
-
-_GEMINI_CONFIG = {
-    "response_mime_type": "application/json",
-    "response_schema":    _RESPONSE_SCHEMA,
-}
+Return a JSON object with keys "question" (string) and "options" (array of objects with "label" and "signal_hint")."""
 
 
 async def generate_clarification(messages: List[Dict]) -> ClarificationRequest:
@@ -67,13 +32,8 @@ async def generate_clarification(messages: List[Dict]) -> ClarificationRequest:
     )
 
     try:
-        response = await _client.aio.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=_PROMPT.format(user_message=last_user_msg),
-            config=_GEMINI_CONFIG,
-        )
-        print(f"[ClarificationGenerator] Raw response: {response.text}")
-        data = json.loads(response.text)
+        data = await generate_json(_PROMPT.format(user_message=last_user_msg))
+        print(f"[ClarificationGenerator] Raw response: {data}")
 
         options = [
             ClarificationOption(
@@ -89,10 +49,10 @@ async def generate_clarification(messages: List[Dict]) -> ClarificationRequest:
         return ClarificationRequest(
             question="Can you tell me a bit more about what's happening with your hair?",
             options=[
-                ClarificationOption(label="Products sit on top — nothing absorbs",         signal_hint="absorption_blocked"),
-                ClarificationOption(label="My curls lose shape or definition quickly",     signal_hint="hold_loss"),
-                ClarificationOption(label="Hair is snapping or shedding more than usual",  signal_hint="breakage_active"),
+                ClarificationOption(label="Products sit on top — nothing absorbs",                signal_hint="absorption_blocked"),
+                ClarificationOption(label="My curls lose shape or definition quickly",            signal_hint="hold_loss"),
+                ClarificationOption(label="Hair is snapping or shedding more than usual",         signal_hint="breakage_active"),
                 ClarificationOption(label="Scalp feels heavy, itchy, or products stopped working", signal_hint="buildup_present"),
-                ClarificationOption(label="Not sure — it just feels off",                  signal_hint=None),
+                ClarificationOption(label="Not sure — it just feels off",                         signal_hint=None),
             ],
         )

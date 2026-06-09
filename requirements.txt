@@ -6,8 +6,9 @@
 fastapi
 uvicorn[standard]
 
-# Google GenAI client
+# LLM providers
 google-genai
+openai
 
 # dotenv loader for config.py
 python-dotenv

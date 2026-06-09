@@ -1,10 +1,6 @@
-import json
 from typing import List, Dict
 
-from google import genai
-from app.config import GEMINI_API_KEY
-
-_client = genai.Client(api_key=GEMINI_API_KEY)
+from app.agents.llm_call.provider import generate_json
 
 _DETECTION_PROMPT = """\
 Role: You are an expert conversation analyst for a hair care concierge service.
@@ -44,35 +40,10 @@ emotional_state: What is the user's predominant emotional tone?
   - neutral    : Matter-of-fact, no strong emotional signal
   - fatigued   : Tired of trying, low energy, resigned tone
 
+Return a JSON object with keys: journey_state, intent_clarity, confidence_level, friction_score, emotional_state, reasoning.
+
 Conversation:
 {conversation}"""
-
-_RESPONSE_SCHEMA = {
-    "type": "OBJECT",
-    "properties": {
-        "journey_state": {
-            "type": "STRING",
-            "enum": [
-                "discovering", "diagnosing", "evaluating",
-                "conversion_ready", "reassurance", "post_purchase", "troubleshooting"
-            ]
-        },
-        "intent_clarity":   {"type": "STRING", "enum": ["low", "medium", "high"]},
-        "confidence_level": {"type": "STRING", "enum": ["certain", "unsure", "overwhelmed"]},
-        "friction_score":   {"type": "STRING", "enum": ["low", "moderate", "high"]},
-        "emotional_state":  {"type": "STRING", "enum": ["frustrated", "hopeful", "neutral", "fatigued"]},
-        "reasoning":        {"type": "STRING"},
-    },
-    "required": [
-        "journey_state", "intent_clarity", "confidence_level",
-        "friction_score", "emotional_state", "reasoning"
-    ],
-}
-
-_GEMINI_CONFIG = {
-    "response_mime_type": "application/json",
-    "response_schema": _RESPONSE_SCHEMA,
-}
 
 
 async def detect_intent(messages: List[Dict[str, str]]) -> Dict:
@@ -83,13 +54,8 @@ async def detect_intent(messages: List[Dict[str, str]]) -> Dict:
     print(f"[IntentDetector] Conversation sent:\n{conversation}\n")
 
     try:
-        response = await _client.aio.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=_DETECTION_PROMPT.format(conversation=conversation),
-            config=_GEMINI_CONFIG,
-        )
-        print(f"[IntentDetector] Raw response: {response.text}")
-        result = json.loads(response.text)
+        result = await generate_json(_DETECTION_PROMPT.format(conversation=conversation))
+        print(f"[IntentDetector] Raw response: {result}")
         return {
             "journey_state":    result.get("journey_state", "discovering"),
             "intent_clarity":   result.get("intent_clarity", "low"),

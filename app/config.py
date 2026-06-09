@@ -1,22 +1,21 @@
 from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env located next to this file. Using an
-# explicit path ensures the key is loaded whether the package is imported
-# from the repository root or the module is executed directly.
 env_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(env_path)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "")
-OPEN_WEATHER_API_KEY = os.getenv("OPEN_WEATHER_API_KEY", "")
+# Active provider — change this one value to switch everything
+# Options: "openai" | "gemini"
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
 
-if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY not found in app/.env or environment")
+OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY", "")
+GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY", "")
 
+WEATHER_API_KEY       = os.getenv("WEATHER_API_KEY", "")
+OPEN_WEATHER_API_KEY  = os.getenv("OPEN_WEATHER_API_KEY", "")
 
-#print("GEMINI_API_KEY loaded:", GEMINI_API_KEY is not None)
+if LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
+    raise RuntimeError("LLM_PROVIDER=openai but OPENAI_API_KEY not found in app/.env or environment")
 
-
-
-
+if LLM_PROVIDER == "gemini" and not GEMINI_API_KEY:
+    raise RuntimeError("LLM_PROVIDER=gemini but GEMINI_API_KEY not found in app/.env or environment")
