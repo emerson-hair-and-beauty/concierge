@@ -8,6 +8,7 @@ SIGNAL_NAMES = [
     "breakage_active",
     "buildup_present",
     "coated_feel",
+    "scalp_sensitivity",
 ]
 
 _DETECTION_PROMPT = """\
@@ -19,8 +20,9 @@ Be generous in your interpretation — users describe symptoms in casual, everyd
 
 Signal Definitions:
 
-absorption_blocked: Products "bead up" or won't soak in despite the hair being clean. Focuses on the hair's inability to receive moisture — the moisture is available but the hair can't take it in.
-  Example phrases: "nothing absorbs", "products just sit on top", "my hair won't drink anything", "so dry no matter what I use", "repelling moisture", "hydration won't penetrate", "always dry", "dry after washing and conditioning", "dry and frizzy", "nothing seems to work", "moisture doesn't seem to last", "hair feels like straw", "curls never feel fully clean after cleansing", "curls feel dry no matter what I use"
+absorption_blocked: Products physically sit on the hair surface and cannot penetrate — the hair actively repels moisture or product despite being clean. There must be a clear behavioural signal that products are not being absorbed, not just general dryness or climate-induced dehydration.
+  Example phrases: "nothing absorbs", "products just sit on top", "my hair won't drink anything", "repelling moisture", "hydration won't penetrate", "dry after washing and conditioning even with heavy products", "nothing seems to work no matter what I apply", "curls never feel fully clean after cleansing", "moisture just bounces off"
+  DO NOT flag for: general dryness from heat or AC, 4C moisture retention difficulty as a hair type trait, or dehydration that a user attributes to climate or environment.
 
 hold_loss: Curls falling limp, styles not lasting, or hair losing shape and definition over time. Focuses on structure, elasticity, and style longevity.
   Example phrases: "curls drop by noon", "no definition", "styles don't last", "hair goes flat", "loses shape fast", "no hold", "mushy", "limp", "my curls lose definition quickly", "my curls frizz a few hours after wash day", "curls frizz quickly", "curls lose definition quickly especially at the ends", "curls don't clump properly", "styling gel doesn't define my curls for long", "I don't feel or see much of a cast after styling", "after day 2 or day 3 my curls look messy", "curls look frizzy in the morning", "curls frizz after diffusing", "wash day results only last a few days"
@@ -34,6 +36,9 @@ buildup_present: Scalp itchiness, dullness, or hair feeling heavy and unresponsi
 coated_feel: A waxy, plastic-like, or "filmy" texture on the strand, often from silicones or heavy oils, that blocks moisture despite appearing hydrated. Focuses on the tactile feel of the strand and moisture retention failure.
   Example phrases: "waxy feeling", "hair feels coated", "plastic-like texture", "filmy", "silicone buildup", "hair doesn't feel like hair", "greasy but not moisturised", "hair often feels dry even after moisturising", "curls look shiny but feel dry and stiff", "hair doesn't retain moisture", "dry and brittle ends", "loss of volume or movement", "hair feels sticky and waxy", "products no longer work as they used to"
 
+scalp_sensitivity: Scalp is irritated, itchy, tender, flaky, or reactive — due to sensitivity, dryness, or an adverse reaction to a product, NOT from product buildup. Focuses on scalp comfort and barrier health rather than buildup removal.
+  Example phrases: "my scalp is itchy", "flaky scalp", "scalp irritation", "scalp is sensitive", "scalp hurts", "tender scalp after styling", "scalp reacts to products", "my child has a sensitive scalp", "scalp dryness", "scalp is inflamed", "scalp burns", "scalp feels sore", "dandruff", "itchy after washing", "scalp feels irritated by my conditioner"
+
 Conversation:
 {conversation}"""
 
@@ -46,8 +51,8 @@ Ask yourself: what situation is this person describing? What does that situation
 
 Signals to reason against:
 
-absorption_blocked: Hair can't take in moisture despite products being applied.
-  Implied by: trying many products with no improvement, interventions consistently failing, scalp or hair feeling dry despite genuine effort.
+absorption_blocked: Hair actively repels moisture — products bead up or sit on top rather than absorbing.
+  Implied by: explicit product-sitting-on-top behaviour, hair that feels dry immediately after applying heavy moisturisers, interventions consistently failing in a way that suggests a physical barrier. NOT implied by: general dryness from climate, heat, or AC; 4C hair struggling with moisture retention as a hair type trait.
 
 hold_loss: Curls or styles lose shape and definition over time.
   Implied by: styles not lasting through the day, results deteriorating between wash days, curls that start defined but don't stay that way.
@@ -60,6 +65,9 @@ buildup_present: Scalp or strands blocked by old product or sebum.
 
 coated_feel: A waxy or filmy layer on the strand blocking moisture.
   Implied by: hair appearing healthy but feeling wrong to the touch, an unexplained texture change, products no longer behaving as expected.
+
+scalp_sensitivity: Scalp is irritated or reactive — not from buildup but from sensitivity or adverse reaction.
+  Implied by: scalp discomfort, itching, or flaking after product use; mention of a sensitive or reactive scalp; child or gentle-care context where scalp is the concern; scalp soreness that is not linked to heavy product use.
 
 Only flag a signal if you can reason a clear path from what the user said to what the signal describes. If nothing can be reasonably inferred, set all to false and reflect that in a low confidence score.
 

@@ -11,6 +11,7 @@ SIGNAL_NAMES = [
     "breakage_active",
     "buildup_present",
     "coated_feel",
+    "scalp_sensitivity",
 ]
 
 

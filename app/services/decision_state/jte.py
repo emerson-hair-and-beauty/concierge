@@ -45,13 +45,44 @@ def resolve_delivery_plan(jte_input: JTEInput, decision_state: str | None) -> JT
         cta_pressure = "none"
         product_exposure = "selective"
         ask_strategy = "proceed_with_best_guess"
-        # Tone adapts to emotional state even inside repair/reset
         if emotion in ("frustrated", "fatigued") or readiness_band == "low":
             tone_profile = "warm_reassuring"
         else:
             tone_profile = "expert_calm"
 
-    elif decision_state == "simplify_friction":
+    elif decision_state == "scalp_calm_first":
+        response_mode = "reassure"
+        response_depth = "medium"
+        cta_pressure = "soft"
+        product_exposure = "selective"
+        tone_profile = "warm_reassuring"
+        ask_strategy = "one_clarifying_question"
+
+    elif decision_state == "climate_control_first":
+        response_mode = "educate"
+        response_depth = "long"
+        cta_pressure = "soft"
+        product_exposure = "selective"
+        ask_strategy = "proceed_with_best_guess"
+        tone_profile = "warm_reassuring" if emotion in ("frustrated", "fatigued") else "expert_calm"
+
+    elif decision_state == "hold_and_definition_first":
+        response_mode = "educate"
+        response_depth = "medium"
+        cta_pressure = "soft"
+        product_exposure = "selective"
+        tone_profile = "expert_calm"
+        ask_strategy = "proceed_with_best_guess"
+
+    elif decision_state == "reinforce_current_routine":
+        response_mode = "reassure"
+        response_depth = "medium"
+        cta_pressure = "soft"
+        product_exposure = "selective"
+        tone_profile = "warm_reassuring"
+        ask_strategy = "no_question"
+
+    elif decision_state == "simplify_and_reduce_friction":
         response_mode = "reassure"
         response_depth = "short"
         cta_pressure = "none"

@@ -16,11 +16,12 @@ Rules:
 - Write options as if a knowledgeable friend is speaking, not a medical form
 - The final option must always be: "Not sure — it just feels off"
 - Map each option to one of these signals (do not show the signal name to the user):
-    absorption_blocked — hair won't absorb products or moisture despite being clean
-    hold_loss          — curls lose shape or definition, styles don't last
-    breakage_active    — hair snapping, shedding, short pieces breaking off
-    buildup_present    — scalp feels heavy, itchy, or like products have stopped working
-    coated_feel        — hair feels waxy, filmy, or coated even though it looks fine
+    absorption_blocked  — hair won't absorb products or moisture despite being clean
+    hold_loss           — curls lose shape or definition, styles don't last
+    breakage_active     — hair snapping, shedding, short pieces breaking off
+    buildup_present     — scalp feels heavy, itchy, or like products have stopped working
+    coated_feel         — hair feels waxy, filmy, or coated even though it looks fine
+    scalp_sensitivity   — scalp is irritated, itchy, sore, or reactive to products
 
 Return a JSON object with keys "question" (string) and "options" (array of objects with "label" and "signal_hint")."""
 

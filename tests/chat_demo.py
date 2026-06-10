@@ -66,18 +66,18 @@ ENV = EnvironmentalContext(
 )
 
 _RESPONSE_STRUCTURES = {
-    "educate":      "Observation → Interpretation → Recommendation → Why",
-    "troubleshoot": "What is Happening → Most Likely Cause → What to Change First → What to Monitor",
-    "convert":      "Problem → Desired Outcome → Why Product Fits → How to Use",
-    "reassure":     "What is Working → Evidence → Why Consistency Matters → Optional Optimisation",
-    "compare":      "Observation → Options & Trade-offs → Recommendation → Why",
+    "educate":      "Observation -> Interpretation -> Recommendation -> Why",
+    "troubleshoot": "What is Happening -> Most Likely Cause -> What to Change First -> What to Monitor",
+    "convert":      "Problem -> Desired Outcome -> Why Product Fits -> How to Use",
+    "reassure":     "What is Working -> Evidence -> Why Consistency Matters -> Optional Optimisation",
+    "compare":      "Observation -> Options & Trade-offs -> Recommendation -> Why",
 }
 
 
 def divider(label: str):
-    print(f"\n{'─' * 60}")
+    print(f"\n{'-' * 60}")
     print(f"  {label}")
-    print(f"{'─' * 60}")
+    print(f"{'-' * 60}")
 
 
 def pick_profile() -> ProfileState:

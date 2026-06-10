@@ -35,8 +35,12 @@ _DEPTH_INSTRUCTIONS = {
     "short":  "1–3 sentences. One decision, one next step. Nothing else.",
     "medium": "3–5 sentences. One brief explanation of why, then the action.",
     "long": (
-        "Structured format: open by naming what you observed, explain the root cause simply, "
-        "then give a clear action plan. Keep it skimmable — no walls of text."
+        "Complete all sections of the response structure — do not stop after the observation. "
+        "Open by naming exactly what you noticed using their words. "
+        "Explain the root cause clearly so it makes sense to a non-expert. "
+        "Give a specific, actionable step-by-step plan. "
+        "Close with what to monitor or expect next. "
+        "Write in short paragraphs. Organised does not mean brief — complete every section."
     ),
 }
 
@@ -96,14 +100,36 @@ _DECISION_EXPLANATIONS = {
         "A clarifying reset must happen before any routine will be effective. "
         "Explain why the reset matters before recommending anything else."
     ),
-    "hold_first": (
+    "scalp_calm_first": (
+        "The scalp is irritated, sensitive, or reactive — this is the primary concern. "
+        "No harsh treatments, no proteins, no heavy product protocols. The scalp must be calmed first. "
+        "Prioritise gentle cleansing, anti-inflammatory or soothing ingredients, and scalp-focused care. "
+        "Avoid anything that could aggravate further: strong actives, frequent manipulation, heat. "
+        "If a child is mentioned, apply extra caution — formulate for maximum gentleness."
+    ),
+    "climate_control_first": (
+        "The GCC climate — humidity, AC, and heat — is actively working against the user's results. "
+        "High humidity causes the cuticle to swell and frizz; AC dehydrates silently; heat accelerates evaporation. "
+        "The solution is an anti-humectant and sealing strategy, not more moisture. "
+        "Explain the climate mechanism clearly before recommending anything. "
+        "Anti-humectant sealants, glycerin-free formulas in humid conditions, and occlusive finishers are the priority. "
+        "Never recommend humectant-heavy products for high-humidity conditions."
+    ),
+    "hold_and_definition_first": (
         "Definition and hold are the primary concern. "
         "Focus on anti-humectant strategy, gel cast, and structure-building products. "
-        "Moisture is not the issue here — structure and longevity are."
+        "Moisture is not the issue here — structure and longevity are. "
+        "Walk the user through the cast-and-scrunch method if they haven't mentioned it."
     ),
-    "simplify_friction": (
+    "reinforce_current_routine": (
+        "The user's routine is working. The job here is validation — not change. "
+        "Protect the consistency that is producing results. Affirm what they are doing right and why it works. "
+        "Only suggest an optimisation if it is genuinely additive and clearly safe. "
+        "Never recommend changing what is working. Avoid introducing new products unnecessarily."
+    ),
+    "simplify_and_reduce_friction": (
         "The user is overwhelmed or frustrated. Simplify everything. "
-        "One step, one action. No product lists. Make it feel manageable."
+        "One step, one action. No product lists. No complex explanations. Make it feel manageable."
     ),
     "balanced_routine_first": (
         "No critical override detected. Build a balanced routine based on the user's profile. "

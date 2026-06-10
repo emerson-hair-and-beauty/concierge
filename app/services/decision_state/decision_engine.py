@@ -35,6 +35,10 @@ def _resolve_hard_override(
     if signal.breakage_active:
         return "repair_first"
 
+    # Scalp sensitivity is a separate pathway from buildup — soothing, not clarifying
+    if signal.scalp_sensitivity:
+        return "scalp_calm_first"
+
     # Reset signals: waxy coat, buildup, blocked absorption, hard water
     # These win even on a low-elasticity profile — you can't repair through a coat
     if (
@@ -45,8 +49,13 @@ def _resolve_hard_override(
     ):
         return "reset_first"
 
-    # Profile baseline: low elasticity nudges toward repair only when no live signal fired
-    if profile.elasticity == "low":
+    # Profile baseline: low elasticity nudges toward repair only when no live signal fired.
+    # Yield to climate routing when humidity is the dominant stressor — elasticity is structural,
+    # but climate-driven frizz is not a structural failure and needs a different pathway.
+    high_humidity_context = env.humidity_level == "high" or (
+        profile.humidity_response and "high" in profile.humidity_response.lower()
+    )
+    if profile.elasticity == "low" and not high_humidity_context:
         return "repair_first"
 
     return None
@@ -71,6 +80,30 @@ def _resolve_routine_constraints(
             step_count_target=4,
             mandatory_steps=_RESET_MANDATORY_STEPS,
             forbidden_steps=_RESET_FORBIDDEN_STEPS,
+        )
+    if decision_state == "scalp_calm_first":
+        return RoutineConstraints(
+            step_count_target=4,
+            mandatory_steps=["gentle_cleanse", "scalp_treatment", "light_condition"],
+            forbidden_steps=["protein_mask", "heavy_treatment", "heat_style", "manipulation_heavy"],
+        )
+    if decision_state == "climate_control_first":
+        return RoutineConstraints(
+            step_count_target=5,
+            mandatory_steps=["cleanse", "condition", "anti_humectant_styler", "sealant"],
+            forbidden_steps=["humectant_heavy_styler"],
+        )
+    if decision_state == "hold_and_definition_first":
+        return RoutineConstraints(
+            step_count_target=5,
+            mandatory_steps=["cleanse", "condition", "gel_or_cast", "seal"],
+            forbidden_steps=["heavy_butter", "heavy_oil_pre_poo"],
+        )
+    if decision_state == "reinforce_current_routine":
+        return RoutineConstraints(
+            step_count_target=4,
+            mandatory_steps=["maintain_current_steps"],
+            forbidden_steps=[],
         )
 
     # Standard flow — constraints shaped by profile
@@ -111,6 +144,29 @@ def _resolve_product_filters(
         return ProductFilters(
             required_flags=_RESET_REQUIRED_FLAGS,
             forbidden_flags=_RESET_FORBIDDEN_FLAGS,
+            porosity_match=profile.porosity,
+            texture_match=profile.texture_type,
+        )
+    if decision_state == "scalp_calm_first":
+        return ProductFilters(
+            required_flags=["sulfate_free", "silicone_free"],
+            forbidden_flags=["protein", "heavy_butter", "heavy_oil"],
+            porosity_match=profile.porosity,
+            texture_match=profile.texture_type,
+        )
+    if decision_state == "climate_control_first":
+        return ProductFilters(
+            required_flags=["anti_humectant", "humidity_shield"],
+            forbidden_flags=["humectant_heavy"],
+            ideal_hold_level="strong",
+            porosity_match=profile.porosity,
+            texture_match=profile.texture_type,
+        )
+    if decision_state == "hold_and_definition_first":
+        return ProductFilters(
+            required_flags=["anti_humectant"],
+            forbidden_flags=["humectant_heavy", "heavy_butter"],
+            ideal_hold_level="strong",
             porosity_match=profile.porosity,
             texture_match=profile.texture_type,
         )
@@ -157,11 +213,37 @@ def _resolve_secondary_state(
     intent: SessionIntent,
     signal: SessionSignal,
     env: EnvironmentalContext,
-) -> str | None:
+    profile: ProfileState,
+) -> str:
+    # Overwhelmed / high-friction users need simplification first
     if intent.friction_score == "high" or intent.confidence_level == "overwhelmed":
-        return "simplify_friction"
+        return "simplify_and_reduce_friction"
+
+    # Positive pattern — routine is working, reinforce consistency.
+    # User is satisfied, low friction, not actively describing a problem.
+    if (
+        intent.emotional_state in ("hopeful", "neutral")
+        and intent.friction_score == "low"
+        and intent.journey_state not in ("diagnosing", "troubleshooting", "post_purchase")
+        and not signal.hold_loss
+    ):
+        return "reinforce_current_routine"
+
+    # Post-purchase: specific product usage questions — not a climate or repair moment
+    if intent.journey_state == "post_purchase":
+        return "balanced_routine_first"
+
+    # Climate-driven frizz and definition collapse (supersedes hold_loss — humidity is root cause)
+    high_humidity_profile = (
+        profile.humidity_response and "high" in profile.humidity_response.lower()
+    )
+    if env.humidity_level == "high" or high_humidity_profile:
+        return "climate_control_first"
+
+    # Structure and hold loss without climate as primary driver
     if signal.hold_loss:
-        return "hold_first"
+        return "hold_and_definition_first"
+
     return "balanced_routine_first"
 
 
@@ -180,7 +262,7 @@ def build_strategy_payload(
 
     # Step 3 — secondary states (only if no hard override)
     if decision_state is None:
-        decision_state = _resolve_secondary_state(intent, signal, env)
+        decision_state = _resolve_secondary_state(intent, signal, env, profile)
 
     print(f"[DecisionEngine] decision_state={decision_state}")
 

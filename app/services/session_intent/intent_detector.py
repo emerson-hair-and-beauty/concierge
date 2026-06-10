@@ -15,8 +15,8 @@ journey_state: Where is the user in their journey?
   - diagnosing     : Describing a specific problem, seeking root cause. "My hair keeps breaking off."
   - evaluating     : Comparing options or weighing a recommendation. "Should I use X or Y?"
   - conversion_ready : Ready to buy, asking for a direct recommendation. "What should I get?"
-  - reassurance    : Seeking validation or feeling defeated. "I've tried everything, nothing works."
-  - post_purchase  : Already bought, asking how to use or what to expect. "I got the product, now what?"
+  - reassurance    : Seeking validation that their approach is right, OR expressing satisfaction with current results and wanting confirmation to continue. "I've tried everything, nothing works." OR "My routine is working well, am I on the right track?"
+  - post_purchase  : Already bought a specific product and asking how to use it or what to expect from it. Must involve a direct usage question about a product they mention acquiring. "I got the product, now what?" NOT for general satisfaction with a routine that is working.
   - troubleshooting: Routine failed or produced unexpected results. "I followed the routine and it made it worse."
 
 intent_clarity: How clear is the user about what they want?
@@ -32,7 +32,7 @@ confidence_level: How confident does the user feel about their hair knowledge?
 friction_score: How much resistance or difficulty is the user experiencing?
   - low      : Smooth engagement, open to suggestions
   - moderate : Some hesitation, mild pushback, or unanswered questions
-  - high     : Repeated confusion, resistance, frustration, or feeling unheard
+  - high     : Repeated confusion, resistance, frustration, feeling unheard, OR an explicit request to simplify — e.g. "too many steps", "I want something simple", "I cannot deal with complicated", "just tell me what to do"
 
 emotional_state: What is the user's predominant emotional tone?
   - frustrated : Expressing annoyance, disappointment, or repeated failure

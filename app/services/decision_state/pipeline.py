@@ -26,11 +26,22 @@ _PRODUCT_QUERY_TEMPLATES = {
         "clarifying shampoo chelating treatment scalp buildup removal "
         "deep cleanse product residue hard water mineral deposit"
     ),
-    "hold_first": (
-        "strong hold curl gel anti humectant humidity resistant definition "
-        "frizz control sealant high humidity curl keeper"
+    "scalp_calm_first": (
+        "gentle sulfate free shampoo sensitive scalp soothing scalp treatment "
+        "anti inflammatory scalp care fragrance free mild cleanser"
     ),
-    "simplify_friction": (
+    "climate_control_first": (
+        "anti humectant curl gel glycerin free humidity resistant strong hold "
+        "frizz shield humidity seal GCC climate curl definition"
+    ),
+    "hold_and_definition_first": (
+        "strong hold curl gel anti humectant humidity resistant definition "
+        "frizz control sealant high humidity curl keeper cast method"
+    ),
+    "reinforce_current_routine": (
+        "curl care routine maintenance moisture balance scalp health"
+    ),
+    "simplify_and_reduce_friction": (
         "simple easy curl routine leave-in conditioner lightweight moisture"
     ),
 }

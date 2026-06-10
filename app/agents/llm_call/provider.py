@@ -39,7 +39,10 @@ async def _openai_json(prompt: str) -> Dict:
     client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     response = await client.chat.completions.create(
         model=OPENAI_CHAT_MODEL,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": "Respond with valid JSON only."},
+            {"role": "user", "content": prompt},
+        ],
         response_format={"type": "json_object"},
         temperature=0,
     )

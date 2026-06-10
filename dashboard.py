@@ -259,11 +259,14 @@ if user_input:
 
         ds = strategy.decision_state or "balanced_routine_first"
         colour_map = {
-            "repair_first":         "#c62828",
-            "reset_first":          "#e65100",
-            "hold_first":           "#1565c0",
-            "simplify_friction":    "#6a1b9a",
-            "balanced_routine_first": "#2e7d32",
+            "repair_first":                 "#c62828",
+            "reset_first":                  "#e65100",
+            "scalp_calm_first":             "#ad1457",
+            "climate_control_first":        "#0277bd",
+            "hold_and_definition_first":    "#1565c0",
+            "reinforce_current_routine":    "#2e7d32",
+            "simplify_and_reduce_friction": "#6a1b9a",
+            "balanced_routine_first":       "#4caf50",
         }
         st.markdown(
             f'<div style="font-size:20px;font-weight:bold;color:{colour_map.get(ds,"#333")};'

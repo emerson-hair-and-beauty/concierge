@@ -28,6 +28,7 @@ class SessionSignal(BaseModel):
     breakage_active: bool = False
     buildup_present: bool = False
     coated_feel: bool = False
+    scalp_sensitivity: bool = False          # itchy/flaky/irritated scalp — not buildup, sensitivity
     confidence_score: float = 0.0
     evidence_quote: str = ""
     fallback_used: bool = False
@@ -101,8 +102,10 @@ class StrategyPayload(BaseModel):
     The complete output of the Decision Engine.
     Consumed by: Adaptive Routine Builder, Product Recommendation Engine, JTE.
     """
-    decision_state: Optional[str] = None    # repair_first / reset_first / hold_first /
-                                             # balanced_routine_first / simplify_friction / None
+    decision_state: Optional[str] = None    # repair_first / reset_first / scalp_calm_first /
+                                             # hold_and_definition_first / climate_control_first /
+                                             # reinforce_current_routine / simplify_and_reduce_friction /
+                                             # balanced_routine_first / None
     routine_constraints: RoutineConstraints = RoutineConstraints()
     product_filters: ProductFilters = ProductFilters()
     jte_input: JTEInput
