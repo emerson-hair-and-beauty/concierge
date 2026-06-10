@@ -10,6 +10,10 @@ from app.services.decision_state.models import (
 from app.services.session_signal.session_signal_service import process_session_signals
 from app.services.session_intent.session_intent_service import process_session_intent
 from app.services.decision_state.decision_engine import build_strategy_payload
+from app.services.decision_state.decision_state_history import (
+    get_session_decision_states,
+    log_decision_state,
+)
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.decision_state.response_composer import compose_response
 from app.agents.recommendation.lib.knowledge_base.query_products import query_products
@@ -116,7 +120,9 @@ async def run_concierge_pipeline(
         if k in signal_snapshot
     })
 
-    strategy_payload = build_strategy_payload(profile, session_signal, env, session_intent)
+    delivered_states = get_session_decision_states(session_id)
+    strategy_payload = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
+    log_decision_state(user_id, session_id, strategy_payload.decision_state)
     yield json.dumps({
         "type": "strategy",
         "content": strategy_payload.model_dump(),

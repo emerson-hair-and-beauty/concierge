@@ -115,7 +115,7 @@ async def ask_clarification(messages: list) -> str | None:
         print(f"  Please enter a number between 1 and {len(clarification.options)}.")
 
 
-async def run_turn(messages: list, profile: ProfileState) -> bool:
+async def run_turn(messages: list, profile: ProfileState, delivered_states: set) -> bool:
     """Returns False if clarification was requested (turn not complete yet)."""
     divider("WHAT THE AI IS DOING")
 
@@ -153,8 +153,13 @@ async def run_turn(messages: list, profile: ProfileState) -> bool:
     print("\n  Step 3 — Decision engine running...")
     session_signal = SessionSignal(**{k: signals_raw.get(k, False) for k in SessionSignal.model_fields if k in signals_raw})
     session_intent = await process_session_intent(messages)
-    strategy = build_strategy_payload(profile, session_signal, ENV, session_intent)
-    print(f"  Decision state : {strategy.decision_state}")
+    strategy = build_strategy_payload(profile, session_signal, ENV, session_intent, frozenset(delivered_states))
+    if strategy.decision_state:
+        if strategy.decision_state not in delivered_states:
+            print(f"  Decision state : {strategy.decision_state}  (new this session)")
+        else:
+            print(f"  Decision state : {strategy.decision_state}")
+        delivered_states.add(strategy.decision_state)
     print(f"  Routine plan   : {', '.join(strategy.routine_constraints.mandatory_steps)}")
 
     # Step 4 — JTE
@@ -206,6 +211,7 @@ async def run_turn(messages: list, profile: ProfileState) -> bool:
 async def main():
     profile = pick_profile()
     messages = []
+    delivered_states = set()
 
     print("\n" + "=" * 60)
     print("  Type your hair concern and press Enter.")
@@ -229,9 +235,9 @@ async def main():
         messages.append({"role": "user", "content": user_input})
 
         # Re-run if clarification was requested (enriched message already appended)
-        complete = await run_turn(messages, profile)
+        complete = await run_turn(messages, profile, delivered_states)
         if not complete:
-            complete = await run_turn(messages, profile)
+            complete = await run_turn(messages, profile, delivered_states)
 
         if complete:
             messages.append({"role": "assistant", "content": "[response delivered]"})

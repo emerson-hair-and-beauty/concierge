@@ -214,6 +214,7 @@ def _resolve_secondary_state(
     signal: SessionSignal,
     env: EnvironmentalContext,
     profile: ProfileState,
+    delivered_states: frozenset[str] = frozenset(),
 ) -> str:
     # Overwhelmed / high-friction users need simplification first
     if intent.friction_score == "high" or intent.confidence_level == "overwhelmed":
@@ -238,7 +239,13 @@ def _resolve_secondary_state(
         profile.humidity_response and "high" in profile.humidity_response.lower()
     )
     if env.humidity_level == "high" or high_humidity_profile:
-        return "climate_control_first"
+        # Climate education only needs to happen once per session — progress the
+        # conversation forward instead of repeating the same diagnosis every turn.
+        if "climate_control_first" not in delivered_states:
+            return "climate_control_first"
+        if "hold_and_definition_first" not in delivered_states:
+            return "hold_and_definition_first"
+        return "balanced_routine_first"
 
     # Structure and hold loss without climate as primary driver
     if signal.hold_loss:
@@ -256,13 +263,14 @@ def build_strategy_payload(
     signal: SessionSignal,
     env: EnvironmentalContext,
     intent: SessionIntent,
+    delivered_states: frozenset[str] = frozenset(),
 ) -> StrategyPayload:
     # Step 1 — hard overrides
     decision_state = _resolve_hard_override(signal, env, profile)
 
     # Step 3 — secondary states (only if no hard override)
     if decision_state is None:
-        decision_state = _resolve_secondary_state(intent, signal, env, profile)
+        decision_state = _resolve_secondary_state(intent, signal, env, profile, delivered_states)
 
     print(f"[DecisionEngine] decision_state={decision_state}")
 
