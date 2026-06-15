@@ -24,7 +24,7 @@ from app.services.session_intent.session_intent_service import process_session_i
 from app.services.decision_state.response_composer import compose_response
 from app.agents.recommendation.lib.knowledge_base.query_products import query_products
 from app.services.decision_state.pipeline import (
-    _PRODUCT_QUERY_TEMPLATES, _POROSITY_CONTEXT, _TEXTURE_CONTEXT
+    _PRODUCT_QUERY_TEMPLATES, _POROSITY_CONTEXT, _TEXTURE_CONTEXT, _rerank_products
 )
 
 FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "feedback_log.jsonl")
@@ -322,8 +322,8 @@ if user_input:
                 porosity_ctx = _POROSITY_CONTEXT.get(strategy.product_filters.porosity_match or "", "")
                 texture_ctx = _TEXTURE_CONTEXT.get(strategy.product_filters.texture_match or "", "")
                 query = f"{base} {porosity_ctx} {texture_ctx}".strip()
-                result = run_async(query_products(query, top_k=3))
-                candidate_products = result.get("products", [])
+                result = run_async(query_products(query, top_k=10))
+                candidate_products = _rerank_products(result.get("products", []), strategy.product_filters, top_n=3)
 
             if candidate_products:
                 for p in candidate_products:

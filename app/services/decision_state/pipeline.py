@@ -68,6 +68,66 @@ _TEXTURE_CONTEXT = {
     "2A": "soft waves 2A mousse light gel",
 }
 
+# Maps decision_engine.py's ProductFilters flag vocabulary onto the flags
+# actually present in Pinecone metadata (see index_product_matrix.py _build_flags).
+# Flags with no indexed equivalent (e.g. anti_humectant, bond_builder, chelating)
+# are intentionally omitted — they have no effect until the catalogue is enriched.
+_FORBIDDEN_FLAG_ALIASES = {
+    "humectant_heavy": "humectant_heavy",
+    "heavy_butter":    "butter_oil_heavy",
+    "heavy_oil":       "butter_oil_heavy",
+    "protein":         "protein",
+}
+
+_REQUIRED_FLAG_ALIASES = {
+    "sulfate_free":       "sulfate_free",
+    "silicone_free":      "silicone_free",
+    "low_buildup_risk":   "low_buildup_risk",
+    "lightweight_formula": "lightweight",
+    "protein":            "protein",
+}
+
+# Acceptable indexed `hold` values for each ideal_hold_level.
+_HOLD_MATCH = {
+    "light":    {"none", "soft"},
+    "moderate": {"soft", "medium"},
+    "strong":   {"medium", "strong"},
+}
+
+
+def _score_product(product: dict, filters) -> int:
+    metadata = product.get("metadata") or {}
+    flags = set(metadata.get("flags", []))
+    score = 0
+
+    for flag in filters.forbidden_flags:
+        indexed = _FORBIDDEN_FLAG_ALIASES.get(flag)
+        if indexed and indexed in flags:
+            score -= 2
+
+    for flag in filters.required_flags:
+        indexed = _REQUIRED_FLAG_ALIASES.get(flag)
+        if indexed and indexed in flags:
+            score += 1
+
+    if filters.ideal_hold_level:
+        acceptable = _HOLD_MATCH.get(filters.ideal_hold_level, set())
+        if metadata.get("hold") in acceptable:
+            score += 1
+
+    return score
+
+
+def _rerank_products(products: list, filters, top_n: int) -> list:
+    """Re-orders semantically-retrieved products so ones that violate the
+    decision state's known required/forbidden flags and hold level sink to
+    the bottom, without dropping below top_n results."""
+    ranked = sorted(
+        enumerate(products),
+        key=lambda pair: (-_score_product(pair[1], filters), pair[0]),
+    )
+    return [product for _, product in ranked[:top_n]]
+
 
 async def _fetch_candidate_products(payload) -> list:
     filters = payload.product_filters
@@ -78,8 +138,8 @@ async def _fetch_candidate_products(payload) -> list:
     texture_ctx = _TEXTURE_CONTEXT.get(filters.texture_match or "", "")
 
     query = f"{base} {porosity_ctx} {texture_ctx}".strip()
-    result = await query_products(query, top_k=5)
-    return result.get("products", [])
+    result = await query_products(query, top_k=10)
+    return _rerank_products(result.get("products", []), filters, top_n=5)
 
 
 async def run_concierge_pipeline(

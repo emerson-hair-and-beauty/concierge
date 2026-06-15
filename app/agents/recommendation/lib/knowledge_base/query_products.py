@@ -61,9 +61,10 @@ async def query_products(query_text, top_k=5):
     for match in result.matches:
         products.append({
             "id": match.id,
-            "content": match.metadata.get("content", "")
+            "content": match.metadata.get("content", ""),
+            "metadata": match.metadata,
         })
-    
+
     return {"products": products}
 
 
