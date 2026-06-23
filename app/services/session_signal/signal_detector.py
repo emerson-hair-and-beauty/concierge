@@ -20,15 +20,16 @@ Be generous in your interpretation — users describe symptoms in casual, everyd
 
 Signal Definitions:
 
-absorption_blocked: Products physically sit on the hair surface and cannot penetrate — the hair actively repels moisture or product despite being clean. There must be a clear behavioural signal that products are not being absorbed, not just general dryness or climate-induced dehydration.
-  Example phrases: "nothing absorbs", "products just sit on top", "my hair won't drink anything", "repelling moisture", "hydration won't penetrate", "dry after washing and conditioning even with heavy products", "nothing seems to work no matter what I apply", "curls never feel fully clean after cleansing", "moisture just bounces off"
-  DO NOT flag for: general dryness from heat or AC, 4C moisture retention difficulty as a hair type trait, or dehydration that a user attributes to climate or environment.
+absorption_blocked: Products physically sit on the hair surface and cannot penetrate — the hair actively repels moisture or product despite being clean. Flag when the user has tried products and they are not working, regardless of whether they name the mechanism.
+  Example phrases: "nothing absorbs", "products just sit on top", "my hair won't drink anything", "repelling moisture", "hydration won't penetrate", "dry after washing and conditioning even with heavy products", "nothing seems to work no matter what I apply", "curls never feel fully clean after cleansing", "moisture just bounces off", "I've tried everything and nothing works", "tried curl creams and leave-ins but still dry", "doesn't stay moisturised no matter what I use", "brittle even after conditioning"
+  DO NOT flag for: general dryness the user attributes to climate, heat, or AC — only dismiss when the user explicitly names an external cause. If they have tried multiple products with no result, flag it.
 
 hold_loss: Curls falling limp, styles not lasting, or hair losing shape and definition over time. Focuses on structure, elasticity, and style longevity.
   Example phrases: "curls drop by noon", "no definition", "styles don't last", "hair goes flat", "loses shape fast", "no hold", "mushy", "limp", "my curls lose definition quickly", "my curls frizz a few hours after wash day", "curls frizz quickly", "curls lose definition quickly especially at the ends", "curls don't clump properly", "styling gel doesn't define my curls for long", "I don't feel or see much of a cast after styling", "after day 2 or day 3 my curls look messy", "curls look frizzy in the morning", "curls frizz after diffusing", "wash day results only last a few days"
 
 breakage_active: Evidence of snapping, excessive shedding, thinning, or weak strands. Focuses on physical integrity and structural damage to the hair shaft.
   Example phrases: "hair keeps snapping", "lots of short pieces", "breaking off", "split ends everywhere", "hair feels weak", "snaps when I detangle", "shedding a lot", "hairfall", "hair loss", "my hair isn't growing", "curls are thinning", "major hair fall when I brush my curls", "hair loss when detangling", "curls are weak or limp"
+  DO NOT flag for: "brittle" used alone without corroborating evidence of snapping, shedding, or visible short hairs. Brittle from dryness belongs to absorption_blocked, not breakage_active.
 
 buildup_present: Scalp itchiness, dullness, or hair feeling heavy and unresponsive due to layers of old product or sebum. Focuses on the need for a deeper cleanse.
   Example phrases: "scalp is itchy", "hair feels heavy", "product won't wash out", "dull and weighed down", "residue on scalp", "hair looks dirty fast", "gunky", "dull curls and loss of definition", "hair feels oily and greasy", "hair strands take a long time to dry", "curls that don't hold", "tangled hair and brittle ends", "scalp itching", "hair and scalp flakes", "hair and curls are flat and weighed down", "products don't work"
@@ -78,9 +79,9 @@ def _all_clear(signals: Dict) -> bool:
     return not any(signals.get(k, False) for k in SIGNAL_NAMES)
 
 
-async def _run_detection(prompt: str) -> Dict:
+async def _run_detection(prompt: str, label: str) -> Dict:
     result = await generate_json(prompt)
-    print(f"[SignalDetector] Raw response: {result}")
+    print(f"[SignalDetector][{label}] Raw response: {result}")
     signals = {k: bool(result.get(k, False)) for k in SIGNAL_NAMES}
     signals["confidence_score"] = result.get("confidence_score", 0.0)
     signals["evidence_quote"] = result.get("evidence_quote", "")
@@ -95,12 +96,12 @@ async def detect_signals(messages: List[Dict[str, str]]) -> Dict[str, bool]:
     print(f"[SignalDetector] Conversation sent:\n{conversation}\n")
 
     try:
-        signals = await _run_detection(_DETECTION_PROMPT.format(conversation=conversation))
+        signals = await _run_detection(_DETECTION_PROMPT.format(conversation=conversation), label="primary")
         signals["fallback_used"] = False
 
         if _all_clear(signals):
             print("[SignalDetector] All clear — running fallback detection")
-            fallback = await _run_detection(_FALLBACK_PROMPT.format(conversation=conversation))
+            fallback = await _run_detection(_FALLBACK_PROMPT.format(conversation=conversation), label="fallback")
             fallback["fallback_used"] = True
             return fallback
 
