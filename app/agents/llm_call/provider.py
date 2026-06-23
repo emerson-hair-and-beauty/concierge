@@ -15,9 +15,10 @@ from app.config import LLM_PROVIDER, OPENAI_API_KEY, GEMINI_API_KEY
 # ---------------------------------------------------------------------------
 import os
 
-OPENAI_CHAT_MODEL  = os.getenv("OPENAI_CHAT_MODEL",  "gpt-4o-mini")
-OPENAI_EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL",  "text-embedding-3-small")
-EMBED_DIMENSIONS   = int(os.getenv("EMBED_DIMENSIONS", "384"))
+OPENAI_CHAT_MODEL     = os.getenv("OPENAI_CHAT_MODEL",     "gpt-4o-mini")
+OPENAI_COMPOSER_MODEL = os.getenv("OPENAI_COMPOSER_MODEL", "gpt-4o")
+OPENAI_EMBED_MODEL    = os.getenv("OPENAI_EMBED_MODEL",    "text-embedding-3-small")
+EMBED_DIMENSIONS      = int(os.getenv("EMBED_DIMENSIONS",  "384"))
 
 GEMINI_CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL",  "gemini-2.5-flash-lite")
 GEMINI_EMBED_MODEL = "models/gemini-embedding-001"
@@ -81,9 +82,10 @@ async def _openai_stream(prompt: str) -> AsyncGenerator:
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     stream = await client.chat.completions.create(
-        model=OPENAI_CHAT_MODEL,
+        model=OPENAI_COMPOSER_MODEL,
         messages=[{"role": "user", "content": prompt}],
         stream=True,
+        temperature=0.3,
     )
     prompt_tokens = 0
     completion_tokens = 0
@@ -98,7 +100,7 @@ async def _openai_stream(prompt: str) -> AsyncGenerator:
     if prompt_tokens or completion_tokens:
         yield {
             "type": "token_usage",
-            "model": OPENAI_CHAT_MODEL,
+            "model": OPENAI_COMPOSER_MODEL,
             "usage": {
                 "prompt_tokens":     prompt_tokens,
                 "completion_tokens": completion_tokens,
