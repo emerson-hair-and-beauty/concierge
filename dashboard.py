@@ -157,6 +157,8 @@ if "feedback_given" not in st.session_state:
     st.session_state.feedback_given = False
 if "pending_clarification" not in st.session_state:
     st.session_state.pending_clarification = None
+if "shown_product_ids" not in st.session_state:
+    st.session_state.shown_product_ids = set()
 
 
 # ---------------------------------------------------------------------------
@@ -322,8 +324,15 @@ if user_input:
                 porosity_ctx = _POROSITY_CONTEXT.get(strategy.product_filters.porosity_match or "", "")
                 texture_ctx = _TEXTURE_CONTEXT.get(strategy.product_filters.texture_match or "", "")
                 query = f"{base} {porosity_ctx} {texture_ctx}".strip()
-                result = run_async(query_products(query, top_k=10))
-                candidate_products = _rerank_products(result.get("products", []), strategy.product_filters, top_n=3)
+                result = run_async(query_products(query, top_k=15))
+                ranked = _rerank_products(result.get("products", []), strategy.product_filters, top_n=15)
+
+                shown = st.session_state.shown_product_ids
+                fresh = [p for p in ranked if p.get("id") not in shown]
+                candidate_products = fresh[:3] if len(fresh) >= 2 else ranked[:3]
+
+                for p in candidate_products:
+                    st.session_state.shown_product_ids.add(p.get("id"))
 
             if candidate_products:
                 for p in candidate_products:

@@ -21,52 +21,74 @@ from app.services.clarification.clarification_generator import generate_clarific
 from app.services.session_signal.signal_detector import SIGNAL_NAMES
 
 
-_PRODUCT_QUERY_TEMPLATES = {
-    "repair_first": (
-        "hydrolyzed protein treatment bond builder amino acid keratin repair "
-        "elasticity restoration breakage prevention strengthening fragile hair"
-    ),
-    "reset_first": (
-        "clarifying shampoo chelating treatment scalp buildup removal "
-        "deep cleanse product residue hard water mineral deposit"
-    ),
-    "scalp_calm_first": (
-        "gentle sulfate free shampoo sensitive scalp soothing scalp treatment "
-        "anti inflammatory scalp care fragrance free mild cleanser"
-    ),
-    "climate_control_first": (
-        "anti humectant curl gel glycerin free humidity resistant strong hold "
-        "frizz shield humidity seal GCC climate curl definition"
-    ),
-    "hold_and_definition_first": (
-        "strong hold curl gel anti humectant humidity resistant definition "
-        "frizz control sealant high humidity curl keeper cast method"
-    ),
-    "reinforce_current_routine": (
-        "curl care routine maintenance moisture balance scalp health"
-    ),
-    "simplify_and_reduce_friction": (
-        "simple easy curl routine leave-in conditioner lightweight moisture"
-    ),
+# Layer 1 — Decision state core: what the hair needs right now
+_DECISION_STATE_TERMS = {
+    "repair_first":                 "protein treatment bond repair breakage prevention elasticity restoration",
+    "reset_first":                  "clarifying shampoo chelating buildup removal deep cleanse residue",
+    "scalp_calm_first":             "sensitive scalp soothing gentle cleanser anti-inflammatory fragrance free",
+    "climate_control_first":        "anti-humectant glycerin free humidity resistant frizz shield strong hold",
+    "hold_and_definition_first":    "strong hold curl gel definition frizz control cast method curl keeper",
+    "reinforce_current_routine":    "curl care moisture balance maintenance scalp health",
+    "simplify_and_reduce_friction": "lightweight leave-in simple routine easy curl care moisture",
+    "balanced_routine_first":       "curl care leave-in moisturiser styler hydration definition maintenance",
 }
 
-_POROSITY_CONTEXT = {
-    "low":    "lightweight formula low porosity hair humectant avoid heavy oils",
-    "medium": "balanced moisture protein medium porosity curl care",
-    "high":   "high porosity porous hair occlusive sealant protein rich moisturiser",
+# Layer 2 — Active signal terms: what the user is experiencing
+_SIGNAL_TERMS = {
+    "absorption_blocked": "moisture penetration absorption barrier low porosity humectant",
+    "hold_loss":          "curl definition hold longevity frizz control structure",
+    "breakage_active":    "breakage repair strengthening protein fragile weak strands",
+    "buildup_present":    "scalp cleanse clarify residue removal buildup sebum",
+    "coated_feel":        "silicone free lightweight film remover clarify waxy coating",
+    "scalp_sensitivity":  "sensitive scalp gentle soothing mild fragrance free",
 }
 
-_TEXTURE_CONTEXT = {
-    "4C": "tight coils 4C shrinkage prone fragile moisture retention",
-    "4B": "dense coils 4B definition moisture rich curl care",
-    "4A": "loose coils 4A defined spiral moisture",
-    "3C": "tight curls 3C frizz prone humidity definition",
-    "3B": "defined curls 3B curl cream medium hold",
-    "3A": "loose curls 3A lightweight moisture bounce",
-    "2C": "wavy 2C frizz control light hold",
-    "2B": "wavy 2B lightweight enhancing",
-    "2A": "soft waves 2A mousse light gel",
+# Layer 3 — Profile modifiers: who the hair belongs to
+_POROSITY_TERMS = {
+    "low":    "low porosity lightweight formula humectant",
+    "medium": "medium porosity balanced moisture protein",
+    "high":   "high porosity occlusive sealant protein rich",
 }
+
+_TEXTURE_TERMS = {
+    "4C": "4C tight coils shrinkage moisture retention",
+    "4B": "4B dense coils definition moisture",
+    "4A": "4A defined coils spiral moisture",
+    "3C": "3C tight curls frizz definition",
+    "3B": "3B defined curls medium hold",
+    "3A": "3A loose curls lightweight bounce",
+    "2C": "2C wavy frizz control light hold",
+    "2B": "2B wavy lightweight",
+    "2A": "2A soft waves mousse gel",
+}
+
+
+def _build_product_query(decision_state: str, active_signals: list, filters) -> str:
+    parts = []
+
+    layer1 = _DECISION_STATE_TERMS.get(decision_state, "curl care moisturiser")
+    parts.append(layer1)
+
+    for signal in active_signals:
+        term = _SIGNAL_TERMS.get(signal)
+        if term:
+            parts.append(term)
+
+    porosity_term = _POROSITY_TERMS.get(filters.porosity_match or "")
+    if porosity_term:
+        parts.append(porosity_term)
+
+    texture_term = _TEXTURE_TERMS.get(filters.texture_match or "")
+    if texture_term:
+        parts.append(texture_term)
+
+    return " ".join(parts)
+
+
+# Keep for dashboard backwards compatibility
+_PRODUCT_QUERY_TEMPLATES = _DECISION_STATE_TERMS
+_POROSITY_CONTEXT = _POROSITY_TERMS
+_TEXTURE_CONTEXT = _TEXTURE_TERMS
 
 # Maps decision_engine.py's ProductFilters flag vocabulary onto the flags
 # actually present in Pinecone metadata (see index_product_matrix.py _build_flags).
@@ -129,17 +151,20 @@ def _rerank_products(products: list, filters, top_n: int) -> list:
     return [product for _, product in ranked[:top_n]]
 
 
-async def _fetch_candidate_products(payload) -> list:
+async def _fetch_candidate_products(payload, session_signal=None, shown_product_ids: set = None) -> list:
     filters = payload.product_filters
     decision_state = payload.decision_state or "balanced_routine_first"
+    active_signals = [k for k in SIGNAL_NAMES if getattr(session_signal, k, False)] if session_signal else []
 
-    base = _PRODUCT_QUERY_TEMPLATES.get(decision_state, "curl care moisturiser styler")
-    porosity_ctx = _POROSITY_CONTEXT.get(filters.porosity_match or "", "")
-    texture_ctx = _TEXTURE_CONTEXT.get(filters.texture_match or "", "")
+    query = _build_product_query(decision_state, active_signals, filters)
+    result = await query_products(query, top_k=15)
+    ranked = _rerank_products(result.get("products", []), filters, top_n=15)
 
-    query = f"{base} {porosity_ctx} {texture_ctx}".strip()
-    result = await query_products(query, top_k=10)
-    return _rerank_products(result.get("products", []), filters, top_n=5)
+    if shown_product_ids:
+        fresh = [p for p in ranked if p.get("id") not in shown_product_ids]
+        return fresh[:5] if len(fresh) >= 3 else ranked[:5]
+
+    return ranked[:5]
 
 
 async def run_concierge_pipeline(
@@ -149,6 +174,7 @@ async def run_concierge_pipeline(
     profile: ProfileState,
     env: EnvironmentalContext,
     conversation_summary: str | None = None,
+    shown_product_ids: set = None,
 ) -> AsyncGenerator:
     # --- Phase 1: Run all input services in parallel ---
     yield json.dumps({"type": "status", "content": "Analysing your situation..."}) + "\n"
@@ -199,7 +225,7 @@ async def run_concierge_pipeline(
     candidate_products = []
     if delivery_plan.product_exposure != "hidden":
         yield json.dumps({"type": "status", "content": "Finding relevant products..."}) + "\n"
-        candidate_products = await _fetch_candidate_products(strategy_payload)
+        candidate_products = await _fetch_candidate_products(strategy_payload, session_signal=session_signal, shown_product_ids=shown_product_ids or set())
 
     # --- Phase 5: Response Composer (LLM call, streamed) ---
     yield json.dumps({"type": "status", "content": "Composing response..."}) + "\n"
