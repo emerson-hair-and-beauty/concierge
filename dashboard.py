@@ -186,6 +186,11 @@ for msg in st.session_state.messages:
         st.write(msg["content"])
 
 # ── Clarification MCQ (shown when signal detection was inconclusive) ──────────
+# When answered, this feeds `user_input` directly into the Steps 1-6 block below —
+# it must NOT just append to history and rerun, since that block only runs off
+# `user_input`, and st.chat_input() returns None on a rerun nothing was typed into.
+user_input = None
+
 if st.session_state.pending_clarification:
     clar = st.session_state.pending_clarification
     with st.chat_message("assistant"):
@@ -193,13 +198,12 @@ if st.session_state.pending_clarification:
         option_labels = [opt["label"] for opt in clar["options"]]
         selected = st.radio("", option_labels, key="clarification_radio", label_visibility="collapsed")
         if st.button("That sounds right →", type="primary"):
-            st.session_state.messages.append({"role": "user", "content": selected})
             st.session_state.pending_clarification = None
-            st.rerun()
-    st.stop()
-
-# Input
-user_input = st.chat_input("Type a hair concern...")
+            st.session_state.pop("clarification_radio", None)  # avoid stale option on the next clarification
+            user_input = selected
+else:
+    # Input — hidden while a clarification is pending so the user answers that first
+    user_input = st.chat_input("Type a hair concern...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
