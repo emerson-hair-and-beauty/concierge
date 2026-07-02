@@ -26,6 +26,7 @@ from app.agents.recommendation.lib.knowledge_base.query_products import query_pr
 from app.services.decision_state.pipeline import (
     _PRODUCT_QUERY_TEMPLATES, _POROSITY_CONTEXT, _TEXTURE_CONTEXT, _rerank_products
 )
+from app.services.decision_state.texture_modifiers import resolve_texture_modifiers
 
 FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "feedback_log.jsonl")
 
@@ -33,36 +34,47 @@ FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "feedback_log.jsonl")
 # Profiles
 # ---------------------------------------------------------------------------
 
-PROFILES = {
-    "Dense Coils (4B) — High porosity, low elasticity": ProfileState(
-        texture_type="4B", texture_label="Dense Coils",
-        porosity="high", density="high", elasticity="low",
-        humidity_response="high sensitivity",
-        hair_goals=["length retention", "definition"],
-        routine_flags=["seal_moisture", "strengthen", "frizz_control"],
-    ),
-    "Tight Curls (3C) — Low porosity, medium density": ProfileState(
-        texture_type="3C", texture_label="Tight Curls",
-        porosity="low", density="medium",
-        humidity_response="moderate sensitivity",
-        hair_goals=["definition", "moisture"],
-        routine_flags=["frizz_control", "avoid_butters", "use_heat_for_masks"],
-    ),
-    "Loose Coils (4A) — Medium porosity, high density": ProfileState(
-        texture_type="4A", texture_label="Loose Coils",
-        porosity="medium", density="high",
-        humidity_response="low sensitivity",
-        hair_goals=["moisture", "scalp health"],
-        routine_flags=["standard_care", "seal_moisture"],
-    ),
-    "Defined Curls (3B) — Medium porosity, medium density": ProfileState(
-        texture_type="3B", texture_label="Defined Curls",
-        porosity="medium", density="medium",
-        humidity_response="moderate sensitivity",
-        hair_goals=["definition", "frizz control"],
-        routine_flags=["frizz_control", "balanced_volume"],
-    ),
-}
+# texture_type, porosity, density, elasticity, humidity_response, hair_goals, routine_flags, description
+_PROFILE_SPECS = [
+    ("2A", "low",    "low",    None,  "low sensitivity",
+     ["hold", "volume"], ["lightweight_products", "avoid_heavy_oils"],
+     "Low porosity, low density"),
+    ("2B", "medium", "low",    None,  "moderate sensitivity",
+     ["definition", "frizz control"], ["light_hold", "frizz_control"],
+     "Medium porosity, low density"),
+    ("2C", "medium", "medium", None,  "high sensitivity",
+     ["frizz control", "hold"], ["frizz_control", "medium_hold"],
+     "Medium porosity, medium density"),
+    ("3A", "medium", "medium", None,  "moderate sensitivity",
+     ["definition", "moisture"], ["moisture_balance", "light_styler"],
+     "Medium porosity, medium density"),
+    ("3B", "medium", "medium", None,  "moderate sensitivity",
+     ["definition", "frizz control"], ["frizz_control", "balanced_volume"],
+     "Medium porosity, medium density"),
+    ("3C", "low",    "medium", None,  "moderate sensitivity",
+     ["definition", "moisture"], ["frizz_control", "avoid_butters", "use_heat_for_masks"],
+     "Low porosity, medium density"),
+    ("4A", "medium", "high",   None,  "low sensitivity",
+     ["moisture", "scalp health"], ["standard_care", "seal_moisture"],
+     "Medium porosity, high density"),
+    ("4B", "high",   "high",   "low", "high sensitivity",
+     ["length retention", "definition"], ["seal_moisture", "strengthen", "frizz_control"],
+     "High porosity, low elasticity"),
+    ("4C", "high",   "high",   "low", "high sensitivity",
+     ["moisture retention", "breakage prevention"], ["seal_moisture", "strengthen", "protective_styling"],
+     "High porosity, low elasticity"),
+]
+
+PROFILES = {}
+for texture_type, porosity, density, elasticity, humidity_response, hair_goals, routine_flags, description in _PROFILE_SPECS:
+    label = resolve_texture_modifiers(texture_type).label
+    key = f"{label} ({texture_type}) — {description}"
+    PROFILES[key] = ProfileState(
+        texture_type=texture_type, texture_label=label,
+        porosity=porosity, density=density, elasticity=elasticity,
+        humidity_response=humidity_response,
+        hair_goals=hair_goals, routine_flags=routine_flags,
+    )
 
 
 # ---------------------------------------------------------------------------
