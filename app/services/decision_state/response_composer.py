@@ -49,8 +49,10 @@ _DEPTH_INSTRUCTIONS = {
 # ---------------------------------------------------------------------------
 
 _CTA_INSTRUCTIONS = {
-    "none":     "Do not mention products or suggest any purchase. Focus entirely on understanding and action steps.",
-    "soft":     "You may gently point toward a next step, but do not name or push specific products.",
+    # Governs purchase pressure only — whether/how a product may be named at all is
+    # decided by product_exposure below. These must never contradict that.
+    "none":     "Do not suggest a purchase or push toward buying anything. Focus entirely on understanding and the action steps themselves.",
+    "soft":     "Keep any product mention low-pressure — frame it as a natural next step, not a pitch. No urgency, no push to buy.",
     "moderate": "Recommend one product category or routine direction. Be specific but not pushy.",
     "strong":   "Give a direct product or routine recommendation. Be confident and clear about what to get.",
 }
