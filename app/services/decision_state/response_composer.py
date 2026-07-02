@@ -186,6 +186,7 @@ When the customer's context involves the UAE or GCC, ground your response in reg
 Hair type        : {texture_label} ({texture_type})
 Porosity         : {porosity}
 Density          : {density}
+Texture traits   : {texture_traits}
 Humidity response: {humidity_response}
 Active flags     : {routine_flags}
 
@@ -257,6 +258,16 @@ def _build_conversation_block(messages: list) -> str:
     return "\n".join(lines)
 
 
+def _build_texture_traits(composer_input: ResponseComposerInput) -> str:
+    mods = composer_input.strategy_payload.product_filters.texture_modifiers
+    if not mods:
+        return "not available"
+    return (
+        f"shrinkage {mods.shrinkage_factor}, fragility {mods.fragility_index}, "
+        f"definition difficulty {mods.definition_difficulty}"
+    )
+
+
 def _build_products_section(composer_input: ResponseComposerInput) -> str:
     plan = composer_input.jte_delivery_plan
     products = composer_input.candidate_products
@@ -287,6 +298,7 @@ async def compose_response(composer_input: ResponseComposerInput) -> AsyncGenera
         texture_type=profile.texture_type,
         porosity=profile.porosity,
         density=profile.density,
+        texture_traits=_build_texture_traits(composer_input),
         humidity_response=profile.humidity_response or "not specified",
         routine_flags=", ".join(profile.routine_flags) or "none",
         decision_state=decision_state,

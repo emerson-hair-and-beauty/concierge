@@ -18,7 +18,7 @@ from app.services.decision_state.models import (
 )
 from app.services.session_signal.signal_detector import detect_signals
 from app.services.session_intent.intent_detector import detect_intent
-from app.services.decision_state.decision_engine import build_strategy_payload
+from app.services.decision_state.decision_engine import build_strategy_payload, _STRUCTURAL_PRIORITY_STATES
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.session_intent.session_intent_service import process_session_intent
 from app.services.decision_state.response_composer import compose_response
@@ -288,6 +288,37 @@ if user_input:
             st.write("Forbidden: " + (", ".join(strategy.product_filters.forbidden_flags) or "none"))
             st.write(f"Hold level: {strategy.product_filters.ideal_hold_level or 'any'}")
             st.write(f"Porosity match: {strategy.product_filters.porosity_match or 'any'}")
+
+        mods = strategy.product_filters.texture_modifiers
+        if mods:
+            st.markdown("**Texture modifiers**")
+            st.write(
+                f"{mods.label} ({profile.texture_type}) — "
+                f"shrinkage: {mods.shrinkage_factor}, fragility: {mods.fragility_index}, "
+                f"definition difficulty: {mods.definition_difficulty}"
+            )
+
+            styling_applies = ds not in _STRUCTURAL_PRIORITY_STATES
+            effects = []
+            if mods.fragility_index == "high":
+                effects.append("Fragility high → avoiding heavy manipulation, favouring protein/strengthening products")
+            if mods.shrinkage_factor == "high":
+                effects.append(
+                    "Shrinkage high → added an elongation/stretching step"
+                    if styling_applies else
+                    "Shrinkage high → elongation step skipped (a more urgent concern owns the routine this turn)"
+                )
+            if mods.definition_difficulty == "high":
+                effects.append(
+                    "Definition difficulty high → added a styling/cast step and raised target hold to strong"
+                    if styling_applies else
+                    "Definition difficulty high → styling step and hold bump skipped (a more urgent concern owns the routine this turn)"
+                )
+            if effects:
+                for e in effects:
+                    st.caption(f"• {e}")
+            else:
+                st.caption("No high-impact traits for this texture — standard handling applies.")
 
     # ── Step 4: JTE ───────────────────────────────────────────────────────
     with st.expander("🎯 Step 4 — How should we deliver this?", expanded=True):

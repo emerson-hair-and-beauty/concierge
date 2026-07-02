@@ -73,6 +73,18 @@ class RoutineConstraints(BaseModel):
     forbidden_steps: List[str] = []         # e.g. ["heavy_treatment", "protein_mask"]
 
 
+class TextureModifiers(BaseModel):
+    """
+    Parametric behaviour traits derived from texture_type. Lets routine constraints,
+    product filters, and query building vary by curl pattern (e.g. 4B vs 4A) without
+    a separate hard-coded branch per texture in the Decision Engine.
+    """
+    shrinkage_factor: str        # low / medium / high
+    fragility_index: str         # low / medium / high
+    definition_difficulty: str   # low / medium / high
+    label: str                   # user-facing curl pattern name, e.g. "Dense Coils" — display only, not used in decision logic
+
+
 class ProductFilters(BaseModel):
     """
     Controls which products the Recommendation Engine surfaces.
@@ -83,6 +95,7 @@ class ProductFilters(BaseModel):
     ideal_hold_level: Optional[str] = None  # light / moderate / strong
     porosity_match: Optional[str] = None    # low / medium / high
     texture_match: Optional[str] = None     # e.g. "4B" — for texture-specific products
+    texture_modifiers: Optional[TextureModifiers] = None
 
 
 class JTEInput(BaseModel):

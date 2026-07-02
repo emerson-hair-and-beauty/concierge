@@ -50,6 +50,14 @@ _POROSITY_TERMS = {
     "high":   "high porosity occlusive sealant protein rich",
 }
 
+# Layer 3b — Texture modifier terms: only added when a trait is "high" (low/medium
+# textures don't need extra emphasis in an already-crowded query)
+_MODIFIER_QUERY_TERMS = {
+    "shrinkage_factor":      "shrinkage elongation stretching length retention",
+    "fragility_index":       "gentle low manipulation strengthening fragile hair protection",
+    "definition_difficulty": "strong definition curl clumping structure hold cast",
+}
+
 _TEXTURE_TERMS = {
     "4C": "4C tight coils shrinkage moisture retention",
     "4B": "4B dense coils definition moisture",
@@ -81,6 +89,11 @@ def _build_product_query(decision_state: str, active_signals: list, filters) -> 
     texture_term = _TEXTURE_TERMS.get(filters.texture_match or "")
     if texture_term:
         parts.append(texture_term)
+
+    if filters.texture_modifiers:
+        for field, term in _MODIFIER_QUERY_TERMS.items():
+            if getattr(filters.texture_modifiers, field) == "high":
+                parts.append(term)
 
     return " ".join(parts)
 
