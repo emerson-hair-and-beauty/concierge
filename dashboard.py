@@ -7,6 +7,7 @@ import asyncio
 import json
 import os
 import sys
+import uuid
 from datetime import datetime
 
 import streamlit as st
@@ -16,17 +17,16 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from app.services.decision_state.models import (
     ProfileState, EnvironmentalContext, SessionSignal, ResponseComposerInput
 )
-from app.services.session_signal.signal_detector import detect_signals
-from app.services.session_intent.intent_detector import detect_intent
+from app.services.session_signal.signal_detector import SIGNAL_NAMES
+from app.services.session_signal.session_signal_service import process_session_signals
 from app.services.decision_state.decision_engine import build_strategy_payload, _STRUCTURAL_PRIORITY_STATES
+from app.services.decision_state.decision_state_history import get_session_decision_states, log_decision_state
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.session_intent.session_intent_service import process_session_intent
 from app.services.decision_state.response_composer import compose_response
-from app.agents.recommendation.lib.knowledge_base.query_products import query_products
-from app.services.decision_state.pipeline import (
-    _PRODUCT_QUERY_TEMPLATES, _POROSITY_CONTEXT, _TEXTURE_CONTEXT, _rerank_products
-)
+from app.services.decision_state.pipeline import _fetch_candidate_products
 from app.services.decision_state.texture_modifiers import resolve_texture_modifiers
+from app.services.resilience import get_degraded_events
 
 FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "feedback_log.jsonl")
 
@@ -171,6 +171,12 @@ if "pending_clarification" not in st.session_state:
     st.session_state.pending_clarification = None
 if "shown_product_ids" not in st.session_state:
     st.session_state.shown_product_ids = set()
+if "session_id" not in st.session_state:
+    # Real session id — process_session_signals/log_decision_state persist to Supabase
+    # keyed on this, so it must be fresh per conversation to match production behaviour.
+    st.session_state.session_id = f"dashboard-{uuid.uuid4()}"
+if "user_id" not in st.session_state:
+    st.session_state.user_id = "dashboard-test-user"
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +185,24 @@ if "shown_product_ids" not in st.session_state:
 
 st.title("Emerson Concierge — AI Testing Dashboard")
 st.caption("Type a hair concern below. The dashboard shows every decision the AI makes before responding.")
+
+# ── Infra reliability banner ────────────────────────────────────────────────
+# Session memory (signal history, decision-state progression) depends entirely
+# on Supabase with no fallback store. When it's unreachable, the concierge still
+# responds — but silently loses cross-turn memory. Surfaced here, not just in
+# server logs, so the cost of that gap is visible during a live demo, not just
+# to whoever happens to be watching the terminal.
+_degraded = get_degraded_events()
+if _degraded:
+    with st.expander(f"⚠️ Session memory degraded {len(_degraded)}x this run — Supabase unreachable", expanded=True):
+        st.error(
+            "Signal and decision-state persistence has no fallback store. Every event below is a "
+            "turn where the concierge silently lost memory of the conversation so far — decision "
+            "states can repeat instead of progressing, and signals mentioned earlier can be forgotten."
+        )
+        for e in _degraded[-5:]:
+            st.caption(f"**{e['source']}** — {e['detail']}")
+            st.caption(f"↳ {e['error']}")
 
 # Chat history
 for msg in st.session_state.messages:
@@ -217,7 +241,9 @@ if user_input:
     # ── Step 1: Signal Detection ──────────────────────────────────────────
     with st.expander("🔬 Step 1 — What is happening to the hair?", expanded=True):
         with st.spinner("Detecting hair signals..."):
-            signals_raw = run_async(detect_signals(messages))
+            signals_raw = run_async(process_session_signals(
+                st.session_state.user_id, st.session_state.session_id, messages
+            ))
 
         signal_map = {
             "breakage_active":    "Active breakage / shedding",
@@ -225,6 +251,7 @@ if user_input:
             "buildup_present":    "Product / sebum buildup",
             "hold_loss":          "Curls losing definition",
             "coated_feel":        "Waxy or coated texture",
+            "scalp_sensitivity":  "Scalp sensitivity / irritation",
         }
 
         cols = st.columns(len(signal_map))
@@ -241,8 +268,7 @@ if user_input:
         c2.caption(f"Fallback used: {'yes' if signals_raw.get('fallback_used') else 'no'}")
 
     # ── Clarification gate ────────────────────────────────────────────────
-    _signal_keys = ["breakage_active", "absorption_blocked", "buildup_present", "hold_loss", "coated_feel"]
-    _no_signals   = not any(signals_raw.get(k) for k in _signal_keys)
+    _no_signals   = not any(signals_raw.get(k) for k in SIGNAL_NAMES)
     _low_conf     = signals_raw.get("confidence_score", 0) < 0.5
     if _no_signals and _low_conf:
         from app.services.clarification.clarification_generator import generate_clarification
@@ -252,19 +278,19 @@ if user_input:
         st.rerun()
 
     # ── Step 2: Intent Detection ──────────────────────────────────────────
+    # Computed once via the same service the real pipeline uses (process_session_intent),
+    # instead of a separate detect_intent() call just for display — that was a second,
+    # redundant LLM call producing a value never actually fed into the strategy below.
     with st.expander("🧠 Step 2 — How is the user engaging?", expanded=True):
         with st.spinner("Analysing conversation tone..."):
-            intent_raw = run_async(detect_intent(messages))
+            session_intent = run_async(process_session_intent(messages))
 
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Journey state",    intent_raw["journey_state"])
-        c2.metric("Intent clarity",   intent_raw["intent_clarity"])
-        c3.metric("Confidence",       intent_raw["confidence_level"])
-        c4.metric("Friction",         intent_raw["friction_score"])
-        c5.metric("Emotion",          intent_raw["emotional_state"])
-
-        if intent_raw.get("reasoning"):
-            st.caption(f"**Reasoning:** {intent_raw['reasoning']}")
+        c1.metric("Journey state",    session_intent.journey_state)
+        c2.metric("Intent clarity",   session_intent.intent_clarity)
+        c3.metric("Confidence",       session_intent.confidence_level)
+        c4.metric("Friction",         session_intent.friction_score)
+        c5.metric("Emotion",          session_intent.emotional_state)
 
     # ── Step 3: Decision Engine ───────────────────────────────────────────
     with st.expander("⚙️ Step 3 — What does the hair actually need?", expanded=True):
@@ -272,8 +298,9 @@ if user_input:
             k: signals_raw.get(k, False)
             for k in SessionSignal.model_fields if k in signals_raw
         })
-        session_intent = run_async(process_session_intent(messages))
-        strategy = build_strategy_payload(profile, session_signal, env, session_intent)
+        delivered_states = get_session_decision_states(st.session_state.session_id)
+        strategy = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
+        log_decision_state(st.session_state.user_id, st.session_state.session_id, strategy.decision_state)
 
         ds = strategy.decision_state or "balanced_routine_first"
         colour_map = {
@@ -367,16 +394,12 @@ if user_input:
             st.info("Products hidden — JTE says build trust first before surfacing recommendations.")
         else:
             with st.spinner("Searching Emerson catalogue..."):
-                base = _PRODUCT_QUERY_TEMPLATES.get(ds, "curl care moisturiser")
-                porosity_ctx = _POROSITY_CONTEXT.get(strategy.product_filters.porosity_match or "", "")
-                texture_ctx = _TEXTURE_CONTEXT.get(strategy.product_filters.texture_match or "", "")
-                query = f"{base} {porosity_ctx} {texture_ctx}".strip()
-                result = run_async(query_products(query, top_k=15))
-                ranked = _rerank_products(result.get("products", []), strategy.product_filters, top_n=15)
-
-                shown = st.session_state.shown_product_ids
-                fresh = [p for p in ranked if p.get("id") not in shown]
-                candidate_products = fresh[:3] if len(fresh) >= 2 else ranked[:3]
+                # Calls the real pipeline function — same query building (incl. active
+                # signal terms and texture modifier terms), reranking, and freshness
+                # logic a real user would get, instead of a hand-rolled reimplementation.
+                candidate_products = run_async(_fetch_candidate_products(
+                    strategy, session_signal=session_signal, shown_product_ids=st.session_state.shown_product_ids
+                ))
 
                 for p in candidate_products:
                     st.session_state.shown_product_ids.add(p.get("id"))
@@ -464,4 +487,8 @@ if st.session_state.messages:
         st.session_state.messages = []
         st.session_state.last_result = None
         st.session_state.feedback_given = False
+        st.session_state.shown_product_ids = set()
+        # New session id — otherwise signal/decision-state history from this test
+        # conversation would keep bleeding into the "new" one via Supabase.
+        st.session_state.session_id = f"dashboard-{uuid.uuid4()}"
         st.rerun()

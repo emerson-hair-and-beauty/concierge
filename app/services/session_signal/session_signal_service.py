@@ -15,8 +15,14 @@ async def process_session_signals(
     detected = await detect_signals(window)
     log_new_signals(user_id, session_id, detected)
 
-    # Snapshot merges everything logged so far in this session
+    # Snapshot merges everything logged so far in this session. If Supabase is
+    # unreachable, get_session_snapshot degrades to all-False (see signal_state.py) —
+    # OR in this turn's freshly detected signals as a floor, so an outage costs only
+    # memory of past turns, not the current message too.
     snapshot = get_session_snapshot(session_id)
+    for k in SIGNAL_NAMES:
+        if detected.get(k):
+            snapshot[k] = True
     snapshot["confidence_score"] = detected.get("confidence_score", 0.0)
     snapshot["evidence_quote"] = detected.get("evidence_quote", "")
     snapshot["fallback_used"] = detected.get("fallback_used", False)
