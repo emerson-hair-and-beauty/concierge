@@ -85,7 +85,7 @@ async def _openai_stream(prompt: str) -> AsyncGenerator:
         model=OPENAI_COMPOSER_MODEL,
         messages=[{"role": "user", "content": prompt}],
         stream=True,
-        temperature=0.3,
+        temperature=0.1,
     )
     prompt_tokens = 0
     completion_tokens = 0
@@ -120,7 +120,8 @@ async def _gemini_stream(prompt: str) -> AsyncGenerator:
     while retries <= 5:
         try:
             async for chunk in await client.aio.models.generate_content_stream(
-                model=model_pool[model_index], contents=prompt
+                model=model_pool[model_index], contents=prompt,
+                config={"temperature": 0.1},
             ):
                 if chunk.candidates:
                     for candidate in chunk.candidates:
