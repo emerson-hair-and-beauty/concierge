@@ -23,12 +23,14 @@ from app.services.decision_state.decision_engine import build_strategy_payload, 
 from app.services.decision_state.decision_state_history import get_session_decision_states, log_decision_state
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.session_intent.session_intent_service import process_session_intent
-from app.services.decision_state.response_composer import compose_response
+from app.services.decision_state.response_composer import compose_response, _TONE_INSTRUCTIONS
 from app.services.decision_state.pipeline import _fetch_candidate_products
 from app.services.decision_state.texture_modifiers import resolve_texture_modifiers
 from app.services.resilience import get_degraded_events
 
 FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "feedback_log.jsonl")
+AB_LOG_FILE = os.path.join(os.path.dirname(__file__), "tone_ab_log.jsonl")
+TONE_PRESETS = list(_TONE_INSTRUCTIONS.keys())
 
 # ---------------------------------------------------------------------------
 # Profiles
@@ -84,6 +86,19 @@ for texture_type, porosity, density, elasticity, humidity_response, hair_goals, 
 def save_feedback(entry: dict):
     with open(FEEDBACK_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
+
+
+def save_ab_feedback(entry: dict):
+    with open(AB_LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+async def _collect_response(composer_input, tone_override, temperature):
+    parts = []
+    async for chunk in compose_response(composer_input, tone_override=tone_override, temperature=temperature):
+        if chunk.get("type") == "content":
+            parts.append(chunk["content"])
+    return "".join(parts)
 
 
 def run_async(coro):
@@ -156,6 +171,14 @@ with st.sidebar:
     st.divider()
     st.caption("Feedback is saved locally to `feedback_log.jsonl`")
 
+    st.divider()
+    ab_mode = st.toggle("🧪 Tone A/B testing", value=False)
+    if ab_mode:
+        st.caption(
+            "Step 6 becomes a two-column comparison — pick a tone preset and "
+            "temperature per side. Preferences saved to `tone_ab_log.jsonl`."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Session state
@@ -171,6 +194,8 @@ if "pending_clarification" not in st.session_state:
     st.session_state.pending_clarification = None
 if "shown_product_ids" not in st.session_state:
     st.session_state.shown_product_ids = set()
+if "ab_result" not in st.session_state:
+    st.session_state.ab_result = None
 if "session_id" not in st.session_state:
     # Real session id — process_session_signals/log_decision_state persist to Supabase
     # keyed on this, so it must be fresh per conversation to match production behaviour.
@@ -412,7 +437,6 @@ if user_input:
 
     # ── Step 6: Response ──────────────────────────────────────────────────
     st.markdown("---")
-    st.subheader("💬 Emerson's Response")
 
     composer_input = ResponseComposerInput(
         strategy_payload=strategy,
@@ -423,63 +447,127 @@ if user_input:
         recent_messages=messages[-6:],
     )
 
-    response_placeholder = st.empty()
-    full_response = ""
+    if ab_mode:
+        # ── Step 6 (A/B): Tone comparison ───────────────────────────────────
+        st.subheader("🧪 Step 6 — Tone A/B Comparison")
 
-    async def stream_response():
-        async for chunk in compose_response(composer_input):
-            if chunk.get("type") == "content":
-                yield chunk["content"]
+        turn_key = len(messages)  # identifies this turn, so a stale result from a prior turn never renders
+        default_idx = TONE_PRESETS.index(delivery.tone_profile) if delivery.tone_profile in TONE_PRESETS else 0
 
-    def sync_stream():
-        async def collect():
-            parts = []
-            async for chunk in compose_response(composer_input):
-                if chunk.get("type") == "content":
-                    parts.append(chunk["content"])
-            return "".join(parts)
-        return asyncio.run(collect())
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("**Variant A**")
+            tone_a = st.selectbox("Tone preset", TONE_PRESETS, index=default_idx, key="tone_a")
+            temp_a = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_a")
+        with col_b:
+            st.markdown("**Variant B**")
+            tone_b = st.selectbox("Tone preset", TONE_PRESETS, index=(default_idx + 1) % len(TONE_PRESETS), key="tone_b")
+            temp_b = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_b")
 
-    with st.spinner("Composing response..."):
-        full_response = sync_stream()
+        if st.button("Generate both →", type="primary"):
+            with st.spinner("Composing variant A..."):
+                resp_a = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_a], temp_a))
+            with st.spinner("Composing variant B..."):
+                resp_b = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_b], temp_b))
+            st.session_state.ab_result = {
+                "turn_key": turn_key,
+                "a": {"tone": tone_a, "temperature": temp_a, "response": resp_a},
+                "b": {"tone": tone_b, "temperature": temp_b, "response": resp_b},
+                "resolved": False,
+            }
 
-    st.markdown(
-        f'<div class="response-box">{full_response}</div>',
-        unsafe_allow_html=True
-    )
+        result = st.session_state.ab_result
+        if result and result.get("turn_key") == turn_key:
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.caption(f"**{result['a']['tone'].replace('_', ' ')}** · temp {result['a']['temperature']}")
+                st.markdown(f'<div class="response-box">{result["a"]["response"]}</div>', unsafe_allow_html=True)
+            with col_b:
+                st.caption(f"**{result['b']['tone'].replace('_', ' ')}** · temp {result['b']['temperature']}")
+                st.markdown(f'<div class="response-box">{result["b"]["response"]}</div>', unsafe_allow_html=True)
 
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
-    st.session_state.last_result = {
-        "timestamp":      datetime.now().isoformat(),
-        "profile":        profile_name,
-        "user_input":     user_input,
-        "decision_state": ds,
-        "response_mode":  delivery.response_mode,
-        "response":       full_response,
-    }
+            st.markdown("**Which one?**")
 
-    # ── Feedback ──────────────────────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("📝 Was this response good?")
+            def _resolve_ab(choice: str, chosen_response: str):
+                save_ab_feedback({
+                    "timestamp":      datetime.now().isoformat(),
+                    "profile":        profile_name,
+                    "user_input":     user_input,
+                    "decision_state": ds,
+                    "variant_a":      result["a"],
+                    "variant_b":      result["b"],
+                    "preferred":      choice,
+                })
+                st.session_state.messages.append({"role": "assistant", "content": chosen_response})
+                st.session_state.ab_result["resolved"] = True
 
-    col1, col2, col3 = st.columns([1, 1, 4])
+            if not result.get("resolved"):
+                p1, p2, p3 = st.columns(3)
+                if p1.button("👈 Prefer A", use_container_width=True):
+                    _resolve_ab("a", result["a"]["response"])
+                    st.rerun()
+                if p2.button("🤝 Tie", use_container_width=True):
+                    _resolve_ab("tie", result["a"]["response"])
+                    st.rerun()
+                if p3.button("Prefer B 👉", use_container_width=True):
+                    _resolve_ab("b", result["b"]["response"])
+                    st.rerun()
+            else:
+                st.success("Preference saved — winning response added to the conversation.")
 
-    if col1.button("👍  Yes", use_container_width=True):
-        entry = {**st.session_state.last_result, "rating": "positive", "note": ""}
-        save_feedback(entry)
-        st.session_state.feedback_given = True
-        st.success("Thanks — feedback saved.")
+    else:
+        # ── Step 6 (normal): Single response ────────────────────────────────
+        st.subheader("💬 Emerson's Response")
 
-    if col2.button("👎  No", use_container_width=True):
-        st.session_state.feedback_given = "negative"
+        def sync_stream():
+            async def collect():
+                parts = []
+                async for chunk in compose_response(composer_input):
+                    if chunk.get("type") == "content":
+                        parts.append(chunk["content"])
+                return "".join(parts)
+            return asyncio.run(collect())
 
-    if st.session_state.feedback_given == "negative":
-        note = st.text_area("What was wrong with the response?", key="feedback_note")
-        if st.button("Submit feedback"):
-            entry = {**st.session_state.last_result, "rating": "negative", "note": note}
+        with st.spinner("Composing response..."):
+            full_response = sync_stream()
+
+        st.markdown(
+            f'<div class="response-box">{full_response}</div>',
+            unsafe_allow_html=True
+        )
+
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        st.session_state.last_result = {
+            "timestamp":      datetime.now().isoformat(),
+            "profile":        profile_name,
+            "user_input":     user_input,
+            "decision_state": ds,
+            "response_mode":  delivery.response_mode,
+            "response":       full_response,
+        }
+
+        # ── Feedback ─────────────────────────────────────────────────────
+        st.markdown("---")
+        st.subheader("📝 Was this response good?")
+
+        col1, col2, col3 = st.columns([1, 1, 4])
+
+        if col1.button("👍  Yes", use_container_width=True):
+            entry = {**st.session_state.last_result, "rating": "positive", "note": ""}
             save_feedback(entry)
             st.session_state.feedback_given = True
             st.success("Thanks — feedback saved.")
+
+        if col2.button("👎  No", use_container_width=True):
+            st.session_state.feedback_given = "negative"
+
+        if st.session_state.feedback_given == "negative":
+            note = st.text_area("What was wrong with the response?", key="feedback_note")
+            if st.button("Submit feedback"):
+                entry = {**st.session_state.last_result, "rating": "negative", "note": note}
+                save_feedback(entry)
+                st.session_state.feedback_given = True
+                st.success("Thanks — feedback saved.")
 
 # ── Reset conversation ─────────────────────────────────────────────────────
 if st.session_state.messages:
@@ -488,6 +576,7 @@ if st.session_state.messages:
         st.session_state.last_result = None
         st.session_state.feedback_given = False
         st.session_state.shown_product_ids = set()
+        st.session_state.ab_result = None
         # New session id — otherwise signal/decision-state history from this test
         # conversation would keep bleeding into the "new" one via Supabase.
         st.session_state.session_id = f"dashboard-{uuid.uuid4()}"

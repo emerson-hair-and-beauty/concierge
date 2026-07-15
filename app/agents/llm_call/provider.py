@@ -69,23 +69,23 @@ async def _gemini_json(prompt: str, schema: Dict | None = None) -> Dict:
 # Used by: response_composer (via run_llm_agent)
 # ---------------------------------------------------------------------------
 
-async def stream_text(prompt: str) -> AsyncGenerator:
+async def stream_text(prompt: str, temperature: float = 0.1) -> AsyncGenerator:
     if LLM_PROVIDER == "openai":
-        async for chunk in _openai_stream(prompt):
+        async for chunk in _openai_stream(prompt, temperature):
             yield chunk
     else:
-        async for chunk in _gemini_stream(prompt):
+        async for chunk in _gemini_stream(prompt, temperature):
             yield chunk
 
 
-async def _openai_stream(prompt: str) -> AsyncGenerator:
+async def _openai_stream(prompt: str, temperature: float = 0.1) -> AsyncGenerator:
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     stream = await client.chat.completions.create(
         model=OPENAI_COMPOSER_MODEL,
         messages=[{"role": "user", "content": prompt}],
         stream=True,
-        temperature=0.1,
+        temperature=temperature,
     )
     prompt_tokens = 0
     completion_tokens = 0
@@ -109,7 +109,7 @@ async def _openai_stream(prompt: str) -> AsyncGenerator:
         }
 
 
-async def _gemini_stream(prompt: str) -> AsyncGenerator:
+async def _gemini_stream(prompt: str, temperature: float = 0.1) -> AsyncGenerator:
     from google import genai
     from google.genai.errors import ClientError
     client = genai.Client(api_key=GEMINI_API_KEY)
@@ -121,7 +121,7 @@ async def _gemini_stream(prompt: str) -> AsyncGenerator:
         try:
             async for chunk in await client.aio.models.generate_content_stream(
                 model=model_pool[model_index], contents=prompt,
-                config={"temperature": 0.1},
+                config={"temperature": temperature},
             ):
                 if chunk.candidates:
                     for candidate in chunk.candidates:

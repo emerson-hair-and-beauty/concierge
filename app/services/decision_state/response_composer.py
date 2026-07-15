@@ -294,7 +294,11 @@ def _build_products_section(composer_input: ResponseComposerInput) -> str:
 # Entry point
 # ---------------------------------------------------------------------------
 
-async def compose_response(composer_input: ResponseComposerInput) -> AsyncGenerator:
+async def compose_response(
+    composer_input: ResponseComposerInput,
+    tone_override: str | None = None,
+    temperature: float = 0.1,
+) -> AsyncGenerator:
     profile = composer_input.profile_state
     payload = composer_input.strategy_payload
     plan = composer_input.jte_delivery_plan
@@ -313,7 +317,7 @@ async def compose_response(composer_input: ResponseComposerInput) -> AsyncGenera
         decision_explanation=_DECISION_EXPLANATIONS.get(decision_state, "Proceed with standard advisory."),
         conversation=_build_conversation_block(composer_input.recent_messages),
         response_mode=plan.response_mode,
-        tone_instruction=_TONE_INSTRUCTIONS.get(plan.tone_profile, ""),
+        tone_instruction=tone_override if tone_override is not None else _TONE_INSTRUCTIONS.get(plan.tone_profile, ""),
         depth_instruction=_DEPTH_INSTRUCTIONS.get(plan.response_depth, ""),
         cta_instruction=_CTA_INSTRUCTIONS.get(plan.cta_pressure, ""),
         exposure_instruction=_EXPOSURE_INSTRUCTIONS.get(plan.product_exposure, ""),
@@ -321,5 +325,5 @@ async def compose_response(composer_input: ResponseComposerInput) -> AsyncGenera
         products_section=_build_products_section(composer_input),
     )
 
-    async for chunk in run_llm_agent(prompt):
+    async for chunk in run_llm_agent(prompt, temperature=temperature):
         yield chunk
