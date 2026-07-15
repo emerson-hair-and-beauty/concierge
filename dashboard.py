@@ -6,6 +6,7 @@ Run: streamlit run dashboard.py
 import asyncio
 import json
 import os
+import random
 import sys
 import uuid
 from datetime import datetime
@@ -77,6 +78,22 @@ for texture_type, porosity, density, elasticity, humidity_response, hair_goals, 
         humidity_response=humidity_response,
         hair_goals=hair_goals, routine_flags=routine_flags,
     )
+
+# ---------------------------------------------------------------------------
+# Curated scenarios — stakeholder blind test walks through these one at a time
+# instead of asking a non-technical reviewer to type a hair concern themselves.
+# ---------------------------------------------------------------------------
+
+CURATED_SCENARIOS = [
+    {"message": "My hair keeps breaking off at the ends and it feels so weak lately, I don't know what's going on."},
+    {"message": "I deep condition every single wash day but my hair still feels dry the second it's out of the shower."},
+    {"message": "My curls feel waxy and coated no matter how much I rinse, like nothing is actually getting clean."},
+    {"message": "My curls look great right after I style them but by lunchtime they're just flat and stringy."},
+    {"message": "My scalp has been so itchy and irritated lately, especially after I use my usual gel."},
+    {"message": "The second I step outside in this humidity my hair just poofs up and frizzes no matter what I do."},
+    {"message": "Honestly my routine has been working really well the last few weeks, just wanted to check if there's anything to tweak."},
+    {"message": "I'm so overwhelmed, I have ten products and don't know what order to even use them in anymore, it's too much."},
+]
 
 
 # ---------------------------------------------------------------------------
@@ -172,11 +189,24 @@ with st.sidebar:
     st.caption("Feedback is saved locally to `feedback_log.jsonl`")
 
     st.divider()
-    ab_mode = st.toggle("🧪 Tone A/B testing", value=False)
+    test_mode = st.radio(
+        "Mode",
+        ["Normal", "🔬 Engineer A/B", "🧑‍🤝‍🧑 Stakeholder blind test"],
+        index=0,
+    )
+    ab_mode = test_mode == "🔬 Engineer A/B"
+    stakeholder_mode = test_mode == "🧑‍🤝‍🧑 Stakeholder blind test"
+
     if ab_mode:
         st.caption(
             "Step 6 becomes a two-column comparison — pick a tone preset and "
             "temperature per side. Preferences saved to `tone_ab_log.jsonl`."
+        )
+    elif stakeholder_mode:
+        st.caption(
+            "A blind, one-variable-at-a-time test loop for non-technical reviewers. "
+            "Configure the round below, then hand the screen to your reviewer — no "
+            "tone/temperature jargon is shown to them. Preferences saved to `tone_ab_log.jsonl`."
         )
 
 
@@ -196,6 +226,14 @@ if "shown_product_ids" not in st.session_state:
     st.session_state.shown_product_ids = set()
 if "ab_result" not in st.session_state:
     st.session_state.ab_result = None
+if "stakeholder_round" not in st.session_state:
+    st.session_state.stakeholder_round = None
+if "stakeholder_scenario_idx" not in st.session_state:
+    st.session_state.stakeholder_scenario_idx = 0
+if "stakeholder_tally" not in st.session_state:
+    st.session_state.stakeholder_tally = {"a": 0, "b": 0, "tie": 0}
+if "stakeholder_current" not in st.session_state:
+    st.session_state.stakeholder_current = None
 if "session_id" not in st.session_state:
     # Real session id — process_session_signals/log_decision_state persist to Supabase
     # keyed on this, so it must be fresh per conversation to match production behaviour.
@@ -229,355 +267,537 @@ if _degraded:
             st.caption(f"**{e['source']}** — {e['detail']}")
             st.caption(f"↳ {e['error']}")
 
-# Chat history
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
+if stakeholder_mode:
+    # ── Stakeholder blind test ──────────────────────────────────────────────
+    st.subheader("🧑‍🤝‍🧑 Stakeholder Blind Test")
+    st.caption("Pick which response sounds more like Emerson. No setup needed on your end — just read and choose.")
 
-# ── Clarification MCQ (shown when signal detection was inconclusive) ──────────
-# When answered, this feeds `user_input` directly into the Steps 1-6 block below —
-# it must NOT just append to history and rerun, since that block only runs off
-# `user_input`, and st.chat_input() returns None on a rerun nothing was typed into.
-user_input = None
-
-if st.session_state.pending_clarification:
-    clar = st.session_state.pending_clarification
-    with st.chat_message("assistant"):
-        st.markdown(f"**{clar['question']}**")
-        option_labels = [opt["label"] for opt in clar["options"]]
-        selected = st.radio("", option_labels, key="clarification_radio", label_visibility="collapsed")
-        if st.button("That sounds right →", type="primary"):
-            st.session_state.pending_clarification = None
-            st.session_state.pop("clarification_radio", None)  # avoid stale option on the next clarification
-            user_input = selected
-else:
-    # Input — hidden while a clarification is pending so the user answers that first
-    user_input = st.chat_input("Type a hair concern...")
-
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    st.session_state.feedback_given = False
-
-    with st.chat_message("user"):
-        st.write(user_input)
-
-    messages = st.session_state.messages.copy()
-
-    # ── Step 1: Signal Detection ──────────────────────────────────────────
-    with st.expander("🔬 Step 1 — What is happening to the hair?", expanded=True):
-        with st.spinner("Detecting hair signals..."):
-            signals_raw = run_async(process_session_signals(
-                st.session_state.user_id, st.session_state.session_id, messages
-            ))
-
-        signal_map = {
-            "breakage_active":    "Active breakage / shedding",
-            "absorption_blocked": "Moisture not absorbing",
-            "buildup_present":    "Product / sebum buildup",
-            "hold_loss":          "Curls losing definition",
-            "coated_feel":        "Waxy or coated texture",
-            "scalp_sensitivity":  "Scalp sensitivity / irritation",
-        }
-
-        cols = st.columns(len(signal_map))
-        for col, (key, label) in zip(cols, signal_map.items()):
-            active = signals_raw.get(key, False)
-            col.metric(label, "✓ Yes" if active else "· No",
-                       delta_color="off")
-
-        if signals_raw.get("evidence_quote"):
-            st.info(f"**Evidence:** \"{signals_raw['evidence_quote']}\"")
-
-        c1, c2 = st.columns(2)
-        c1.caption(f"Confidence: {signals_raw.get('confidence_score', 0):.0%}")
-        c2.caption(f"Fallback used: {'yes' if signals_raw.get('fallback_used') else 'no'}")
-
-    # ── Clarification gate ────────────────────────────────────────────────
-    _no_signals   = not any(signals_raw.get(k) for k in SIGNAL_NAMES)
-    _low_conf     = signals_raw.get("confidence_score", 0) < 0.5
-    if _no_signals and _low_conf:
-        from app.services.clarification.clarification_generator import generate_clarification
-        with st.spinner("Generating clarifying question..."):
-            _clar = run_async(generate_clarification(messages))
-        st.session_state.pending_clarification = _clar.model_dump()
-        st.rerun()
-
-    # ── Step 2: Intent Detection ──────────────────────────────────────────
-    # Computed once via the same service the real pipeline uses (process_session_intent),
-    # instead of a separate detect_intent() call just for display — that was a second,
-    # redundant LLM call producing a value never actually fed into the strategy below.
-    with st.expander("🧠 Step 2 — How is the user engaging?", expanded=True):
-        with st.spinner("Analysing conversation tone..."):
-            session_intent = run_async(process_session_intent(messages))
-
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Journey state",    session_intent.journey_state)
-        c2.metric("Intent clarity",   session_intent.intent_clarity)
-        c3.metric("Confidence",       session_intent.confidence_level)
-        c4.metric("Friction",         session_intent.friction_score)
-        c5.metric("Emotion",          session_intent.emotional_state)
-
-    # ── Step 3: Decision Engine ───────────────────────────────────────────
-    with st.expander("⚙️ Step 3 — What does the hair actually need?", expanded=True):
-        session_signal = SessionSignal(**{
-            k: signals_raw.get(k, False)
-            for k in SessionSignal.model_fields if k in signals_raw
-        })
-        delivered_states = get_session_decision_states(st.session_state.session_id)
-        strategy = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
-        log_decision_state(st.session_state.user_id, st.session_state.session_id, strategy.decision_state)
-
-        ds = strategy.decision_state or "balanced_routine_first"
-        colour_map = {
-            "repair_first":                 "#c62828",
-            "reset_first":                  "#e65100",
-            "scalp_calm_first":             "#ad1457",
-            "climate_control_first":        "#0277bd",
-            "hold_and_definition_first":    "#1565c0",
-            "reinforce_current_routine":    "#2e7d32",
-            "simplify_and_reduce_friction": "#6a1b9a",
-            "balanced_routine_first":       "#4caf50",
-        }
-        st.markdown(
-            f'<div style="font-size:20px;font-weight:bold;color:{colour_map.get(ds,"#333")};'
-            f'margin-bottom:12px">Decision State: {ds.replace("_", " ").upper()}</div>',
-            unsafe_allow_html=True
+    with st.expander("⚙️ Round setup (engineer only)", expanded=not st.session_state.stakeholder_round):
+        st.caption(
+            "Configure exactly one variable to test this round — everything else stays "
+            "locked so results aren't confounded by more than one change at a time."
         )
+        variable_under_test = st.radio("Variable under test", ["Tone preset", "Temperature"], horizontal=True)
 
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("**Routine plan**")
-            st.write(f"Steps: {strategy.routine_constraints.step_count_target}")
-            st.write("Must include: " + ", ".join(strategy.routine_constraints.mandatory_steps))
-            st.write("Must avoid: " + (", ".join(strategy.routine_constraints.forbidden_steps) or "none"))
-        with c2:
-            st.markdown("**Product filters**")
-            st.write("Required: " + (", ".join(strategy.product_filters.required_flags) or "none"))
-            st.write("Forbidden: " + (", ".join(strategy.product_filters.forbidden_flags) or "none"))
-            st.write(f"Hold level: {strategy.product_filters.ideal_hold_level or 'any'}")
-            st.write(f"Porosity match: {strategy.product_filters.porosity_match or 'any'}")
+        round_profile_name = st.selectbox("Hair profile (locked for this round)", list(PROFILES.keys()), key="round_profile")
+        rc1, rc2, rc3 = st.columns(3)
+        round_humidity = rc1.select_slider("Humidity (locked)", ["low", "medium", "high"], value="high", key="round_humidity")
+        round_heat = rc2.select_slider("Heat stress (locked)", ["low", "high"], value="high", key="round_heat")
+        round_hard_water = rc3.toggle("Hard water (locked)", value=False, key="round_hard_water")
 
-        mods = strategy.product_filters.texture_modifiers
-        if mods:
-            st.markdown("**Texture modifiers**")
-            st.write(
-                f"{mods.label} ({profile.texture_type}) — "
-                f"shrinkage: {mods.shrinkage_factor}, fragility: {mods.fragility_index}, "
-                f"definition difficulty: {mods.definition_difficulty}"
-            )
-
-            styling_applies = ds not in _STRUCTURAL_PRIORITY_STATES
-            effects = []
-            if mods.fragility_index == "high":
-                effects.append("Fragility high → avoiding heavy manipulation, favouring protein/strengthening products")
-            if mods.shrinkage_factor == "high":
-                effects.append(
-                    "Shrinkage high → added an elongation/stretching step"
-                    if styling_applies else
-                    "Shrinkage high → elongation step skipped (a more urgent concern owns the routine this turn)"
-                )
-            if mods.definition_difficulty == "high":
-                effects.append(
-                    "Definition difficulty high → added a styling/cast step and raised target hold to strong"
-                    if styling_applies else
-                    "Definition difficulty high → styling step and hold bump skipped (a more urgent concern owns the routine this turn)"
-                )
-            if effects:
-                for e in effects:
-                    st.caption(f"• {e}")
-            else:
-                st.caption("No high-impact traits for this texture — standard handling applies.")
-
-    # ── Step 4: JTE ───────────────────────────────────────────────────────
-    with st.expander("🎯 Step 4 — How should we deliver this?", expanded=True):
-        delivery = resolve_delivery_plan(strategy.jte_input, strategy.decision_state)
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Readiness",       f"{delivery.readiness_band} ({delivery.readiness_score})")
-        c2.metric("Response mode",   delivery.response_mode)
-        c3.metric("Depth",           delivery.response_depth)
-        c4.metric("Tone",            delivery.tone_profile.replace("_", " "))
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("CTA pressure",    delivery.cta_pressure)
-        c2.metric("Product exposure", delivery.product_exposure)
-        c3.metric("Ask strategy",    delivery.ask_strategy.replace("_", " "))
-
-        _structure_map = {
-            "educate":      "Observation → Interpretation → Recommendation → Why",
-            "troubleshoot": "What is Happening → Most Likely Cause → What to Change First → What to Monitor",
-            "convert":      "Problem → Desired Outcome → Why Product Fits → How to Use",
-            "reassure":     "What is Working → Evidence → Why Consistency Matters → Optional Optimisation",
-            "compare":      "Observation → Options & Trade-offs → Recommendation → Why",
-        }
-        st.caption(f"**Response structure:** {_structure_map.get(delivery.response_mode, 'Standard')}")
-
-    # ── Step 5: Products ──────────────────────────────────────────────────
-    candidate_products = []
-    with st.expander("🛍️ Step 5 — Product search", expanded=True):
-        if delivery.product_exposure == "hidden":
-            st.info("Products hidden — JTE says build trust first before surfacing recommendations.")
+        if variable_under_test == "Tone preset":
+            c1, c2, c3 = st.columns(3)
+            val_a = c1.selectbox("Variant A tone", TONE_PRESETS, index=0, key="round_tone_a")
+            val_b = c2.selectbox("Variant B tone", TONE_PRESETS, index=1, key="round_tone_b")
+            locked_temp = c3.slider("Temperature (locked for both)", 0.0, 1.0, 0.1, 0.05, key="round_locked_temp")
+            locked_tone = None
         else:
-            with st.spinner("Searching Emerson catalogue..."):
-                # Calls the real pipeline function — same query building (incl. active
-                # signal terms and texture modifier terms), reranking, and freshness
-                # logic a real user would get, instead of a hand-rolled reimplementation.
-                candidate_products = run_async(_fetch_candidate_products(
-                    strategy, session_signal=session_signal, shown_product_ids=st.session_state.shown_product_ids
-                ))
+            c1, c2, c3 = st.columns(3)
+            val_a = c1.slider("Variant A temperature", 0.0, 1.0, 0.1, 0.05, key="round_temp_a")
+            val_b = c2.slider("Variant B temperature", 0.0, 1.0, 0.5, 0.05, key="round_temp_b")
+            locked_tone = c3.selectbox("Tone preset (locked for both)", TONE_PRESETS, index=0, key="round_locked_tone")
+            locked_temp = None
 
-                for p in candidate_products:
-                    st.session_state.shown_product_ids.add(p.get("id"))
-
-            if candidate_products:
-                for p in candidate_products:
-                    st.markdown(f"- {p.get('content', '')[:120]}")
-            else:
-                st.warning("No matching products found in catalogue.")
-
-    # ── Step 6: Response ──────────────────────────────────────────────────
-    st.markdown("---")
-
-    composer_input = ResponseComposerInput(
-        strategy_payload=strategy,
-        jte_delivery_plan=delivery,
-        profile_state=profile,
-        env=env,
-        candidate_products=candidate_products,
-        recent_messages=messages[-6:],
-    )
-
-    if ab_mode:
-        # ── Step 6 (A/B): Tone comparison ───────────────────────────────────
-        st.subheader("🧪 Step 6 — Tone A/B Comparison")
-
-        turn_key = len(messages)  # identifies this turn, so a stale result from a prior turn never renders
-        default_idx = TONE_PRESETS.index(delivery.tone_profile) if delivery.tone_profile in TONE_PRESETS else 0
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("**Variant A**")
-            tone_a = st.selectbox("Tone preset", TONE_PRESETS, index=default_idx, key="tone_a")
-            temp_a = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_a")
-        with col_b:
-            st.markdown("**Variant B**")
-            tone_b = st.selectbox("Tone preset", TONE_PRESETS, index=(default_idx + 1) % len(TONE_PRESETS), key="tone_b")
-            temp_b = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_b")
-
-        if st.button("Generate both →", type="primary"):
-            with st.spinner("Composing variant A..."):
-                resp_a = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_a], temp_a))
-            with st.spinner("Composing variant B..."):
-                resp_b = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_b], temp_b))
-            st.session_state.ab_result = {
-                "turn_key": turn_key,
-                "a": {"tone": tone_a, "temperature": temp_a, "response": resp_a},
-                "b": {"tone": tone_b, "temperature": temp_b, "response": resp_b},
-                "resolved": False,
+        if st.button("Start round →", type="primary"):
+            st.session_state.stakeholder_round = {
+                "variable": variable_under_test,
+                "value_a": val_a,
+                "value_b": val_b,
+                "locked_temp": locked_temp,
+                "locked_tone": locked_tone,
+                "profile_name": round_profile_name,
+                "humidity": round_humidity,
+                "heat": round_heat,
+                "hard_water": round_hard_water,
             }
+            st.session_state.stakeholder_scenario_idx = 0
+            st.session_state.stakeholder_tally = {"a": 0, "b": 0, "tie": 0}
+            st.session_state.stakeholder_current = None
+            st.rerun()
 
-        result = st.session_state.ab_result
-        if result and result.get("turn_key") == turn_key:
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.caption(f"**{result['a']['tone'].replace('_', ' ')}** · temp {result['a']['temperature']}")
-                st.markdown(f'<div class="response-box">{result["a"]["response"]}</div>', unsafe_allow_html=True)
-            with col_b:
-                st.caption(f"**{result['b']['tone'].replace('_', ' ')}** · temp {result['b']['temperature']}")
-                st.markdown(f'<div class="response-box">{result["b"]["response"]}</div>', unsafe_allow_html=True)
+    round_cfg = st.session_state.stakeholder_round
 
-            st.markdown("**Which one?**")
+    if not round_cfg:
+        st.info("Configure a round above to begin.")
+    else:
+        idx = st.session_state.stakeholder_scenario_idx
+        st.markdown("---")
 
-            def _resolve_ab(choice: str, chosen_response: str):
+        if idx >= len(CURATED_SCENARIOS):
+            tally = st.session_state.stakeholder_tally
+            st.success(f"Round complete — {len(CURATED_SCENARIOS)} scenarios rated.")
+            label_a = round_cfg["value_a"] if round_cfg["variable"] == "Tone preset" else f"temp {round_cfg['value_a']}"
+            label_b = round_cfg["value_b"] if round_cfg["variable"] == "Tone preset" else f"temp {round_cfg['value_b']}"
+            m1, m2, m3 = st.columns(3)
+            m1.metric(f"Preferred: {label_a}", tally["a"])
+            m2.metric(f"Preferred: {label_b}", tally["b"])
+            m3.metric("Tie / no preference", tally["tie"])
+            if st.button("Start a new round"):
+                st.session_state.stakeholder_round = None
+                st.rerun()
+        else:
+            st.caption(f"Scenario {idx + 1} of {len(CURATED_SCENARIOS)}")
+            scenario = CURATED_SCENARIOS[idx]
+            with st.chat_message("user"):
+                st.write(scenario["message"])
+
+            current = st.session_state.stakeholder_current
+            if current is None or current.get("idx") != idx:
+                with st.spinner("Preparing comparison..."):
+                    sh_profile = PROFILES[round_cfg["profile_name"]]
+                    sh_env = EnvironmentalContext(
+                        humidity_level=round_cfg["humidity"],
+                        heat_stress=round_cfg["heat"],
+                        hard_water=round_cfg["hard_water"],
+                        sweat_freq="high" if round_cfg["heat"] == "high" else "low",
+                    )
+                    sh_messages = [{"role": "user", "content": scenario["message"]}]
+                    sh_session_id = f"stakeholder-{uuid.uuid4()}"
+
+                    sh_signals_raw = run_async(process_session_signals("stakeholder-user", sh_session_id, sh_messages))
+                    sh_intent = run_async(process_session_intent(sh_messages))
+                    sh_signal = SessionSignal(**{
+                        k: sh_signals_raw.get(k, False)
+                        for k in SessionSignal.model_fields if k in sh_signals_raw
+                    })
+                    sh_strategy = build_strategy_payload(sh_profile, sh_signal, sh_env, sh_intent, frozenset())
+                    sh_delivery = resolve_delivery_plan(sh_strategy.jte_input, sh_strategy.decision_state)
+
+                    sh_products = []
+                    if sh_delivery.product_exposure != "hidden":
+                        sh_products = run_async(_fetch_candidate_products(
+                            sh_strategy, session_signal=sh_signal, shown_product_ids=set()
+                        ))
+
+                    sh_composer_input = ResponseComposerInput(
+                        strategy_payload=sh_strategy,
+                        jte_delivery_plan=sh_delivery,
+                        profile_state=sh_profile,
+                        env=sh_env,
+                        candidate_products=sh_products,
+                        recent_messages=sh_messages,
+                    )
+
+                    if round_cfg["variable"] == "Tone preset":
+                        tone_a_text = _TONE_INSTRUCTIONS[round_cfg["value_a"]]
+                        tone_b_text = _TONE_INSTRUCTIONS[round_cfg["value_b"]]
+                        temp_a = temp_b = round_cfg["locked_temp"]
+                    else:
+                        tone_a_text = tone_b_text = _TONE_INSTRUCTIONS[round_cfg["locked_tone"]]
+                        temp_a, temp_b = round_cfg["value_a"], round_cfg["value_b"]
+
+                    resp_a = run_async(_collect_response(sh_composer_input, tone_a_text, temp_a))
+                    resp_b = run_async(_collect_response(sh_composer_input, tone_b_text, temp_b))
+
+                    # Randomise which side "A"/"B" lands on so position never carries signal.
+                    flip = random.random() < 0.5
+                    left_response, right_response = (resp_b, resp_a) if flip else (resp_a, resp_b)
+
+                    st.session_state.stakeholder_current = {
+                        "idx": idx,
+                        "decision_state": sh_strategy.decision_state,
+                        "left": left_response,
+                        "right": right_response,
+                        "left_is_a": not flip,
+                    }
+                current = st.session_state.stakeholder_current
+
+            col_l, col_r = st.columns(2)
+            with col_l:
+                st.caption("Response A")
+                st.markdown(f'<div class="response-box">{current["left"]}</div>', unsafe_allow_html=True)
+            with col_r:
+                st.caption("Response B")
+                st.markdown(f'<div class="response-box">{current["right"]}</div>', unsafe_allow_html=True)
+
+            st.markdown("**Which one sounds more like Emerson?**")
+
+            def _record_stakeholder_choice(side: str):
+                if side == "tie":
+                    actual = "tie"
+                elif side == "left":
+                    actual = "a" if current["left_is_a"] else "b"
+                else:
+                    actual = "b" if current["left_is_a"] else "a"
+
+                st.session_state.stakeholder_tally[actual] += 1
                 save_ab_feedback({
                     "timestamp":      datetime.now().isoformat(),
-                    "profile":        profile_name,
-                    "user_input":     user_input,
-                    "decision_state": ds,
-                    "variant_a":      result["a"],
-                    "variant_b":      result["b"],
-                    "preferred":      choice,
+                    "mode":           "stakeholder_blind",
+                    "round_variable": round_cfg["variable"],
+                    "value_a":        round_cfg["value_a"],
+                    "value_b":        round_cfg["value_b"],
+                    "scenario":       scenario["message"],
+                    "decision_state": current["decision_state"],
+                    "shown_left":     "a" if current["left_is_a"] else "b",
+                    "preferred":      actual,
                 })
-                st.session_state.messages.append({"role": "assistant", "content": chosen_response})
-                st.session_state.ab_result["resolved"] = True
+                st.session_state.stakeholder_scenario_idx += 1
+                st.session_state.stakeholder_current = None
 
-            if not result.get("resolved"):
-                p1, p2, p3 = st.columns(3)
-                if p1.button("👈 Prefer A", use_container_width=True):
-                    _resolve_ab("a", result["a"]["response"])
-                    st.rerun()
-                if p2.button("🤝 Tie", use_container_width=True):
-                    _resolve_ab("tie", result["a"]["response"])
-                    st.rerun()
-                if p3.button("Prefer B 👉", use_container_width=True):
-                    _resolve_ab("b", result["b"]["response"])
-                    st.rerun()
-            else:
-                st.success("Preference saved — winning response added to the conversation.")
+            p1, p2, p3 = st.columns(3)
+            if p1.button("👈 A", use_container_width=True):
+                _record_stakeholder_choice("left")
+                st.rerun()
+            if p2.button("🤝 Can't tell", use_container_width=True):
+                _record_stakeholder_choice("tie")
+                st.rerun()
+            if p3.button("B 👉", use_container_width=True):
+                _record_stakeholder_choice("right")
+                st.rerun()
 
+else:
+    # ── Normal / Engineer A/B chat flow ─────────────────────────────────────
+
+    # Chat history
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    # ── Clarification MCQ (shown when signal detection was inconclusive) ──────────
+    # When answered, this feeds `user_input` directly into the Steps 1-6 block below —
+    # it must NOT just append to history and rerun, since that block only runs off
+    # `user_input`, and st.chat_input() returns None on a rerun nothing was typed into.
+    user_input = None
+
+    if st.session_state.pending_clarification:
+        clar = st.session_state.pending_clarification
+        with st.chat_message("assistant"):
+            st.markdown(f"**{clar['question']}**")
+            option_labels = [opt["label"] for opt in clar["options"]]
+            selected = st.radio("", option_labels, key="clarification_radio", label_visibility="collapsed")
+            if st.button("That sounds right →", type="primary"):
+                st.session_state.pending_clarification = None
+                st.session_state.pop("clarification_radio", None)  # avoid stale option on the next clarification
+                user_input = selected
     else:
-        # ── Step 6 (normal): Single response ────────────────────────────────
-        st.subheader("💬 Emerson's Response")
+        # Input — hidden while a clarification is pending so the user answers that first
+        user_input = st.chat_input("Type a hair concern...")
 
-        def sync_stream():
-            async def collect():
-                parts = []
-                async for chunk in compose_response(composer_input):
-                    if chunk.get("type") == "content":
-                        parts.append(chunk["content"])
-                return "".join(parts)
-            return asyncio.run(collect())
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        st.session_state.feedback_given = False
 
-        with st.spinner("Composing response..."):
-            full_response = sync_stream()
+        with st.chat_message("user"):
+            st.write(user_input)
 
-        st.markdown(
-            f'<div class="response-box">{full_response}</div>',
-            unsafe_allow_html=True
+        messages = st.session_state.messages.copy()
+
+        # ── Step 1: Signal Detection ──────────────────────────────────────────
+        with st.expander("🔬 Step 1 — What is happening to the hair?", expanded=True):
+            with st.spinner("Detecting hair signals..."):
+                signals_raw = run_async(process_session_signals(
+                    st.session_state.user_id, st.session_state.session_id, messages
+                ))
+
+            signal_map = {
+                "breakage_active":    "Active breakage / shedding",
+                "absorption_blocked": "Moisture not absorbing",
+                "buildup_present":    "Product / sebum buildup",
+                "hold_loss":          "Curls losing definition",
+                "coated_feel":        "Waxy or coated texture",
+                "scalp_sensitivity":  "Scalp sensitivity / irritation",
+            }
+
+            cols = st.columns(len(signal_map))
+            for col, (key, label) in zip(cols, signal_map.items()):
+                active = signals_raw.get(key, False)
+                col.metric(label, "✓ Yes" if active else "· No",
+                           delta_color="off")
+
+            if signals_raw.get("evidence_quote"):
+                st.info(f"**Evidence:** \"{signals_raw['evidence_quote']}\"")
+
+            c1, c2 = st.columns(2)
+            c1.caption(f"Confidence: {signals_raw.get('confidence_score', 0):.0%}")
+            c2.caption(f"Fallback used: {'yes' if signals_raw.get('fallback_used') else 'no'}")
+
+        # ── Clarification gate ────────────────────────────────────────────────
+        _no_signals   = not any(signals_raw.get(k) for k in SIGNAL_NAMES)
+        _low_conf     = signals_raw.get("confidence_score", 0) < 0.5
+        if _no_signals and _low_conf:
+            from app.services.clarification.clarification_generator import generate_clarification
+            with st.spinner("Generating clarifying question..."):
+                _clar = run_async(generate_clarification(messages))
+            st.session_state.pending_clarification = _clar.model_dump()
+            st.rerun()
+
+        # ── Step 2: Intent Detection ──────────────────────────────────────────
+        # Computed once via the same service the real pipeline uses (process_session_intent),
+        # instead of a separate detect_intent() call just for display — that was a second,
+        # redundant LLM call producing a value never actually fed into the strategy below.
+        with st.expander("🧠 Step 2 — How is the user engaging?", expanded=True):
+            with st.spinner("Analysing conversation tone..."):
+                session_intent = run_async(process_session_intent(messages))
+
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("Journey state",    session_intent.journey_state)
+            c2.metric("Intent clarity",   session_intent.intent_clarity)
+            c3.metric("Confidence",       session_intent.confidence_level)
+            c4.metric("Friction",         session_intent.friction_score)
+            c5.metric("Emotion",          session_intent.emotional_state)
+
+        # ── Step 3: Decision Engine ───────────────────────────────────────────
+        with st.expander("⚙️ Step 3 — What does the hair actually need?", expanded=True):
+            session_signal = SessionSignal(**{
+                k: signals_raw.get(k, False)
+                for k in SessionSignal.model_fields if k in signals_raw
+            })
+            delivered_states = get_session_decision_states(st.session_state.session_id)
+            strategy = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
+            log_decision_state(st.session_state.user_id, st.session_state.session_id, strategy.decision_state)
+
+            ds = strategy.decision_state or "balanced_routine_first"
+            colour_map = {
+                "repair_first":                 "#c62828",
+                "reset_first":                  "#e65100",
+                "scalp_calm_first":             "#ad1457",
+                "climate_control_first":        "#0277bd",
+                "hold_and_definition_first":    "#1565c0",
+                "reinforce_current_routine":    "#2e7d32",
+                "simplify_and_reduce_friction": "#6a1b9a",
+                "balanced_routine_first":       "#4caf50",
+            }
+            st.markdown(
+                f'<div style="font-size:20px;font-weight:bold;color:{colour_map.get(ds,"#333")};'
+                f'margin-bottom:12px">Decision State: {ds.replace("_", " ").upper()}</div>',
+                unsafe_allow_html=True
+            )
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Routine plan**")
+                st.write(f"Steps: {strategy.routine_constraints.step_count_target}")
+                st.write("Must include: " + ", ".join(strategy.routine_constraints.mandatory_steps))
+                st.write("Must avoid: " + (", ".join(strategy.routine_constraints.forbidden_steps) or "none"))
+            with c2:
+                st.markdown("**Product filters**")
+                st.write("Required: " + (", ".join(strategy.product_filters.required_flags) or "none"))
+                st.write("Forbidden: " + (", ".join(strategy.product_filters.forbidden_flags) or "none"))
+                st.write(f"Hold level: {strategy.product_filters.ideal_hold_level or 'any'}")
+                st.write(f"Porosity match: {strategy.product_filters.porosity_match or 'any'}")
+
+            mods = strategy.product_filters.texture_modifiers
+            if mods:
+                st.markdown("**Texture modifiers**")
+                st.write(
+                    f"{mods.label} ({profile.texture_type}) — "
+                    f"shrinkage: {mods.shrinkage_factor}, fragility: {mods.fragility_index}, "
+                    f"definition difficulty: {mods.definition_difficulty}"
+                )
+
+                styling_applies = ds not in _STRUCTURAL_PRIORITY_STATES
+                effects = []
+                if mods.fragility_index == "high":
+                    effects.append("Fragility high → avoiding heavy manipulation, favouring protein/strengthening products")
+                if mods.shrinkage_factor == "high":
+                    effects.append(
+                        "Shrinkage high → added an elongation/stretching step"
+                        if styling_applies else
+                        "Shrinkage high → elongation step skipped (a more urgent concern owns the routine this turn)"
+                    )
+                if mods.definition_difficulty == "high":
+                    effects.append(
+                        "Definition difficulty high → added a styling/cast step and raised target hold to strong"
+                        if styling_applies else
+                        "Definition difficulty high → styling step and hold bump skipped (a more urgent concern owns the routine this turn)"
+                    )
+                if effects:
+                    for e in effects:
+                        st.caption(f"• {e}")
+                else:
+                    st.caption("No high-impact traits for this texture — standard handling applies.")
+
+        # ── Step 4: JTE ───────────────────────────────────────────────────────
+        with st.expander("🎯 Step 4 — How should we deliver this?", expanded=True):
+            delivery = resolve_delivery_plan(strategy.jte_input, strategy.decision_state)
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Readiness",       f"{delivery.readiness_band} ({delivery.readiness_score})")
+            c2.metric("Response mode",   delivery.response_mode)
+            c3.metric("Depth",           delivery.response_depth)
+            c4.metric("Tone",            delivery.tone_profile.replace("_", " "))
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("CTA pressure",    delivery.cta_pressure)
+            c2.metric("Product exposure", delivery.product_exposure)
+            c3.metric("Ask strategy",    delivery.ask_strategy.replace("_", " "))
+
+            _structure_map = {
+                "educate":      "Observation → Interpretation → Recommendation → Why",
+                "troubleshoot": "What is Happening → Most Likely Cause → What to Change First → What to Monitor",
+                "convert":      "Problem → Desired Outcome → Why Product Fits → How to Use",
+                "reassure":     "What is Working → Evidence → Why Consistency Matters → Optional Optimisation",
+                "compare":      "Observation → Options & Trade-offs → Recommendation → Why",
+            }
+            st.caption(f"**Response structure:** {_structure_map.get(delivery.response_mode, 'Standard')}")
+
+        # ── Step 5: Products ──────────────────────────────────────────────────
+        candidate_products = []
+        with st.expander("🛍️ Step 5 — Product search", expanded=True):
+            if delivery.product_exposure == "hidden":
+                st.info("Products hidden — JTE says build trust first before surfacing recommendations.")
+            else:
+                with st.spinner("Searching Emerson catalogue..."):
+                    # Calls the real pipeline function — same query building (incl. active
+                    # signal terms and texture modifier terms), reranking, and freshness
+                    # logic a real user would get, instead of a hand-rolled reimplementation.
+                    candidate_products = run_async(_fetch_candidate_products(
+                        strategy, session_signal=session_signal, shown_product_ids=st.session_state.shown_product_ids
+                    ))
+
+                    for p in candidate_products:
+                        st.session_state.shown_product_ids.add(p.get("id"))
+
+                if candidate_products:
+                    for p in candidate_products:
+                        st.markdown(f"- {p.get('content', '')[:120]}")
+                else:
+                    st.warning("No matching products found in catalogue.")
+
+        # ── Step 6: Response ──────────────────────────────────────────────────
+        st.markdown("---")
+
+        composer_input = ResponseComposerInput(
+            strategy_payload=strategy,
+            jte_delivery_plan=delivery,
+            profile_state=profile,
+            env=env,
+            candidate_products=candidate_products,
+            recent_messages=messages[-6:],
         )
 
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
-        st.session_state.last_result = {
-            "timestamp":      datetime.now().isoformat(),
-            "profile":        profile_name,
-            "user_input":     user_input,
-            "decision_state": ds,
-            "response_mode":  delivery.response_mode,
-            "response":       full_response,
-        }
+        if ab_mode:
+            # ── Step 6 (A/B): Tone comparison ───────────────────────────────────
+            st.subheader("🧪 Step 6 — Tone A/B Comparison")
 
-        # ── Feedback ─────────────────────────────────────────────────────
-        st.markdown("---")
-        st.subheader("📝 Was this response good?")
+            turn_key = len(messages)  # identifies this turn, so a stale result from a prior turn never renders
+            default_idx = TONE_PRESETS.index(delivery.tone_profile) if delivery.tone_profile in TONE_PRESETS else 0
 
-        col1, col2, col3 = st.columns([1, 1, 4])
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("**Variant A**")
+                tone_a = st.selectbox("Tone preset", TONE_PRESETS, index=default_idx, key="tone_a")
+                temp_a = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_a")
+            with col_b:
+                st.markdown("**Variant B**")
+                tone_b = st.selectbox("Tone preset", TONE_PRESETS, index=(default_idx + 1) % len(TONE_PRESETS), key="tone_b")
+                temp_b = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_b")
 
-        if col1.button("👍  Yes", use_container_width=True):
-            entry = {**st.session_state.last_result, "rating": "positive", "note": ""}
-            save_feedback(entry)
-            st.session_state.feedback_given = True
-            st.success("Thanks — feedback saved.")
+            if st.button("Generate both →", type="primary"):
+                with st.spinner("Composing variant A..."):
+                    resp_a = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_a], temp_a))
+                with st.spinner("Composing variant B..."):
+                    resp_b = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_b], temp_b))
+                st.session_state.ab_result = {
+                    "turn_key": turn_key,
+                    "a": {"tone": tone_a, "temperature": temp_a, "response": resp_a},
+                    "b": {"tone": tone_b, "temperature": temp_b, "response": resp_b},
+                    "resolved": False,
+                }
 
-        if col2.button("👎  No", use_container_width=True):
-            st.session_state.feedback_given = "negative"
+            result = st.session_state.ab_result
+            if result and result.get("turn_key") == turn_key:
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.caption(f"**{result['a']['tone'].replace('_', ' ')}** · temp {result['a']['temperature']}")
+                    st.markdown(f'<div class="response-box">{result["a"]["response"]}</div>', unsafe_allow_html=True)
+                with col_b:
+                    st.caption(f"**{result['b']['tone'].replace('_', ' ')}** · temp {result['b']['temperature']}")
+                    st.markdown(f'<div class="response-box">{result["b"]["response"]}</div>', unsafe_allow_html=True)
 
-        if st.session_state.feedback_given == "negative":
-            note = st.text_area("What was wrong with the response?", key="feedback_note")
-            if st.button("Submit feedback"):
-                entry = {**st.session_state.last_result, "rating": "negative", "note": note}
+                st.markdown("**Which one?**")
+
+                def _resolve_ab(choice: str, chosen_response: str):
+                    save_ab_feedback({
+                        "timestamp":      datetime.now().isoformat(),
+                        "profile":        profile_name,
+                        "user_input":     user_input,
+                        "decision_state": ds,
+                        "variant_a":      result["a"],
+                        "variant_b":      result["b"],
+                        "preferred":      choice,
+                    })
+                    st.session_state.messages.append({"role": "assistant", "content": chosen_response})
+                    st.session_state.ab_result["resolved"] = True
+
+                if not result.get("resolved"):
+                    p1, p2, p3 = st.columns(3)
+                    if p1.button("👈 Prefer A", use_container_width=True):
+                        _resolve_ab("a", result["a"]["response"])
+                        st.rerun()
+                    if p2.button("🤝 Tie", use_container_width=True):
+                        _resolve_ab("tie", result["a"]["response"])
+                        st.rerun()
+                    if p3.button("Prefer B 👉", use_container_width=True):
+                        _resolve_ab("b", result["b"]["response"])
+                        st.rerun()
+                else:
+                    st.success("Preference saved — winning response added to the conversation.")
+
+        else:
+            # ── Step 6 (normal): Single response ────────────────────────────────
+            st.subheader("💬 Emerson's Response")
+
+            def sync_stream():
+                async def collect():
+                    parts = []
+                    async for chunk in compose_response(composer_input):
+                        if chunk.get("type") == "content":
+                            parts.append(chunk["content"])
+                    return "".join(parts)
+                return asyncio.run(collect())
+
+            with st.spinner("Composing response..."):
+                full_response = sync_stream()
+
+            st.markdown(
+                f'<div class="response-box">{full_response}</div>',
+                unsafe_allow_html=True
+            )
+
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            st.session_state.last_result = {
+                "timestamp":      datetime.now().isoformat(),
+                "profile":        profile_name,
+                "user_input":     user_input,
+                "decision_state": ds,
+                "response_mode":  delivery.response_mode,
+                "response":       full_response,
+            }
+
+            # ── Feedback ─────────────────────────────────────────────────────
+            st.markdown("---")
+            st.subheader("📝 Was this response good?")
+
+            col1, col2, col3 = st.columns([1, 1, 4])
+
+            if col1.button("👍  Yes", use_container_width=True):
+                entry = {**st.session_state.last_result, "rating": "positive", "note": ""}
                 save_feedback(entry)
                 st.session_state.feedback_given = True
                 st.success("Thanks — feedback saved.")
 
-# ── Reset conversation ─────────────────────────────────────────────────────
-if st.session_state.messages:
-    if st.button("🔄 Start new conversation"):
-        st.session_state.messages = []
-        st.session_state.last_result = None
-        st.session_state.feedback_given = False
-        st.session_state.shown_product_ids = set()
-        st.session_state.ab_result = None
-        # New session id — otherwise signal/decision-state history from this test
-        # conversation would keep bleeding into the "new" one via Supabase.
-        st.session_state.session_id = f"dashboard-{uuid.uuid4()}"
-        st.rerun()
+            if col2.button("👎  No", use_container_width=True):
+                st.session_state.feedback_given = "negative"
+
+            if st.session_state.feedback_given == "negative":
+                note = st.text_area("What was wrong with the response?", key="feedback_note")
+                if st.button("Submit feedback"):
+                    entry = {**st.session_state.last_result, "rating": "negative", "note": note}
+                    save_feedback(entry)
+                    st.session_state.feedback_given = True
+                    st.success("Thanks — feedback saved.")
+
+    # ── Reset conversation ─────────────────────────────────────────────────────
+    if st.session_state.messages:
+        if st.button("🔄 Start new conversation"):
+            st.session_state.messages = []
+            st.session_state.last_result = None
+            st.session_state.feedback_given = False
+            st.session_state.shown_product_ids = set()
+            st.session_state.ab_result = None
+            # New session id — otherwise signal/decision-state history from this test
+            # conversation would keep bleeding into the "new" one via Supabase.
+            st.session_state.session_id = f"dashboard-{uuid.uuid4()}"
+            st.rerun()
