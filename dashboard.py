@@ -24,7 +24,9 @@ from app.services.decision_state.decision_engine import build_strategy_payload, 
 from app.services.decision_state.decision_state_history import get_session_decision_states, log_decision_state
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.session_intent.session_intent_service import process_session_intent
-from app.services.decision_state.response_composer import compose_response, _TONE_INSTRUCTIONS
+from app.services.decision_state.response_composer import (
+    compose_response, _TONE_INSTRUCTIONS, _DEPTH_INSTRUCTIONS, _CTA_INSTRUCTIONS, _EXPOSURE_INSTRUCTIONS,
+)
 from app.services.decision_state.pipeline import _fetch_candidate_products
 from app.services.decision_state.texture_modifiers import resolve_texture_modifiers
 from app.services.resilience import get_degraded_events
@@ -110,12 +112,68 @@ def save_ab_feedback(entry: dict):
         f.write(json.dumps(entry) + "\n")
 
 
-async def _collect_response(composer_input, tone_override, temperature):
+async def _collect_response(composer_input, tone_override=None, depth_override=None,
+                             cta_override=None, exposure_override=None, temperature=0.1):
     parts = []
-    async for chunk in compose_response(composer_input, tone_override=tone_override, temperature=temperature):
+    async for chunk in compose_response(
+        composer_input,
+        tone_override=tone_override,
+        depth_override=depth_override,
+        cta_override=cta_override,
+        exposure_override=exposure_override,
+        temperature=temperature,
+    ):
         if chunk.get("type") == "content":
             parts.append(chunk["content"])
     return "".join(parts)
+
+
+def _preset_text_editor(label: str, presets: dict, key: str) -> str:
+    """A text area seeded from a preset dropdown, freely editable afterwards."""
+    preset_names = list(presets.keys())
+    preset_key = f"{key}_preset"
+    text_key = f"{key}_text"
+
+    if text_key not in st.session_state:
+        st.session_state[text_key] = presets[preset_names[0]]
+
+    def _load_preset():
+        st.session_state[text_key] = presets[st.session_state[preset_key]]
+
+    st.selectbox(f"{label} — start from preset", preset_names, key=preset_key, on_change=_load_preset)
+    st.text_area(label, key=text_key, height=110)
+    return st.session_state[text_key]
+
+
+def _variant_knob(label: str, presets: dict, key_prefix: str):
+    """Renders a 'vary this?' toggle. Off = one locked, editable value for both
+    variants. On = two independently editable values, one per variant."""
+    varied = st.checkbox(f"Vary {label} between A and B?", key=f"{key_prefix}_vary")
+    if varied:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"**{label} — Variant A**")
+            text_a = _preset_text_editor(label, presets, f"{key_prefix}_a")
+        with c2:
+            st.markdown(f"**{label} — Variant B**")
+            text_b = _preset_text_editor(label, presets, f"{key_prefix}_b")
+        return text_a, text_b
+    else:
+        st.markdown(f"**{label} — locked (both variants)**")
+        text = _preset_text_editor(label, presets, f"{key_prefix}_locked")
+        return text, text
+
+
+def _variant_temperature(key_prefix: str):
+    varied = st.checkbox("Vary temperature between A and B?", value=True, key=f"{key_prefix}_vary")
+    if varied:
+        c1, c2 = st.columns(2)
+        temp_a = c1.slider("Temperature — Variant A", 0.0, 1.0, 0.1, 0.05, key=f"{key_prefix}_a")
+        temp_b = c2.slider("Temperature — Variant B", 0.0, 1.0, 0.4, 0.05, key=f"{key_prefix}_b")
+        return temp_a, temp_b
+    else:
+        temp = st.slider("Temperature — locked (both variants)", 0.0, 1.0, 0.1, 0.05, key=f"{key_prefix}_locked")
+        return temp, temp
 
 
 def run_async(coro):
@@ -668,31 +726,46 @@ else:
         )
 
         if ab_mode:
-            # ── Step 6 (A/B): Tone comparison ───────────────────────────────────
+            # ── Step 6 (A/B): Full tone-parameter comparison ────────────────────
             st.subheader("🧪 Step 6 — Tone A/B Comparison")
+            st.caption(
+                "Toggle \"Vary\" on whichever knobs you want to test this turn — each becomes an "
+                "editable text box per variant, seeded from a preset but free to rewrite. Anything "
+                "left off stays locked to one shared (still editable) value for both variants."
+            )
 
             turn_key = len(messages)  # identifies this turn, so a stale result from a prior turn never renders
-            default_idx = TONE_PRESETS.index(delivery.tone_profile) if delivery.tone_profile in TONE_PRESETS else 0
 
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown("**Variant A**")
-                tone_a = st.selectbox("Tone preset", TONE_PRESETS, index=default_idx, key="tone_a")
-                temp_a = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_a")
-            with col_b:
-                st.markdown("**Variant B**")
-                tone_b = st.selectbox("Tone preset", TONE_PRESETS, index=(default_idx + 1) % len(TONE_PRESETS), key="tone_b")
-                temp_b = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05, key="temp_b")
+            with st.expander("Tone", expanded=True):
+                tone_a_text, tone_b_text = _variant_knob("Tone", _TONE_INSTRUCTIONS, "ab_tone")
+            with st.expander("Temperature", expanded=True):
+                temp_a, temp_b = _variant_temperature("ab_temp")
+            with st.expander("Response depth"):
+                depth_a_text, depth_b_text = _variant_knob("Depth", _DEPTH_INSTRUCTIONS, "ab_depth")
+            with st.expander("CTA pressure"):
+                cta_a_text, cta_b_text = _variant_knob("CTA pressure", _CTA_INSTRUCTIONS, "ab_cta")
+            with st.expander("Product exposure"):
+                exposure_a_text, exposure_b_text = _variant_knob("Product exposure", _EXPOSURE_INSTRUCTIONS, "ab_exposure")
 
             if st.button("Generate both →", type="primary"):
                 with st.spinner("Composing variant A..."):
-                    resp_a = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_a], temp_a))
+                    resp_a = run_async(_collect_response(
+                        composer_input, tone_a_text, depth_a_text, cta_a_text, exposure_a_text, temp_a,
+                    ))
                 with st.spinner("Composing variant B..."):
-                    resp_b = run_async(_collect_response(composer_input, _TONE_INSTRUCTIONS[tone_b], temp_b))
+                    resp_b = run_async(_collect_response(
+                        composer_input, tone_b_text, depth_b_text, cta_b_text, exposure_b_text, temp_b,
+                    ))
                 st.session_state.ab_result = {
                     "turn_key": turn_key,
-                    "a": {"tone": tone_a, "temperature": temp_a, "response": resp_a},
-                    "b": {"tone": tone_b, "temperature": temp_b, "response": resp_b},
+                    "a": {
+                        "tone": tone_a_text, "depth": depth_a_text, "cta": cta_a_text,
+                        "exposure": exposure_a_text, "temperature": temp_a, "response": resp_a,
+                    },
+                    "b": {
+                        "tone": tone_b_text, "depth": depth_b_text, "cta": cta_b_text,
+                        "exposure": exposure_b_text, "temperature": temp_b, "response": resp_b,
+                    },
                     "resolved": False,
                 }
 
@@ -700,10 +773,10 @@ else:
             if result and result.get("turn_key") == turn_key:
                 col_a, col_b = st.columns(2)
                 with col_a:
-                    st.caption(f"**{result['a']['tone'].replace('_', ' ')}** · temp {result['a']['temperature']}")
+                    st.caption(f"**Variant A** · temp {result['a']['temperature']}")
                     st.markdown(f'<div class="response-box">{result["a"]["response"]}</div>', unsafe_allow_html=True)
                 with col_b:
-                    st.caption(f"**{result['b']['tone'].replace('_', ' ')}** · temp {result['b']['temperature']}")
+                    st.caption(f"**Variant B** · temp {result['b']['temperature']}")
                     st.markdown(f'<div class="response-box">{result["b"]["response"]}</div>', unsafe_allow_html=True)
 
                 st.markdown("**Which one?**")

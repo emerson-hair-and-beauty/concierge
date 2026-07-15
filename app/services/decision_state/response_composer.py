@@ -297,6 +297,9 @@ def _build_products_section(composer_input: ResponseComposerInput) -> str:
 async def compose_response(
     composer_input: ResponseComposerInput,
     tone_override: str | None = None,
+    depth_override: str | None = None,
+    cta_override: str | None = None,
+    exposure_override: str | None = None,
     temperature: float = 0.1,
 ) -> AsyncGenerator:
     profile = composer_input.profile_state
@@ -318,9 +321,9 @@ async def compose_response(
         conversation=_build_conversation_block(composer_input.recent_messages),
         response_mode=plan.response_mode,
         tone_instruction=tone_override if tone_override is not None else _TONE_INSTRUCTIONS.get(plan.tone_profile, ""),
-        depth_instruction=_DEPTH_INSTRUCTIONS.get(plan.response_depth, ""),
-        cta_instruction=_CTA_INSTRUCTIONS.get(plan.cta_pressure, ""),
-        exposure_instruction=_EXPOSURE_INSTRUCTIONS.get(plan.product_exposure, ""),
+        depth_instruction=depth_override if depth_override is not None else _DEPTH_INSTRUCTIONS.get(plan.response_depth, ""),
+        cta_instruction=cta_override if cta_override is not None else _CTA_INSTRUCTIONS.get(plan.cta_pressure, ""),
+        exposure_instruction=exposure_override if exposure_override is not None else _EXPOSURE_INSTRUCTIONS.get(plan.product_exposure, ""),
         response_structure=_RESPONSE_STRUCTURES.get(plan.response_mode, _RESPONSE_STRUCTURES["educate"]),
         products_section=_build_products_section(composer_input),
     )
