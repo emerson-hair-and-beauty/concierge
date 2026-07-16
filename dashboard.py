@@ -26,6 +26,7 @@ from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.session_intent.session_intent_service import process_session_intent
 from app.services.decision_state.response_composer import (
     compose_response, _TONE_INSTRUCTIONS, _DEPTH_INSTRUCTIONS, _CTA_INSTRUCTIONS, _EXPOSURE_INSTRUCTIONS,
+    _RESPONSE_STRUCTURES, FIXED_SECTION_DEFAULTS,
 )
 from app.services.decision_state.pipeline import _fetch_candidate_products
 from app.services.decision_state.texture_modifiers import resolve_texture_modifiers
@@ -112,17 +113,9 @@ def save_ab_feedback(entry: dict):
         f.write(json.dumps(entry) + "\n")
 
 
-async def _collect_response(composer_input, tone_override=None, depth_override=None,
-                             cta_override=None, exposure_override=None, temperature=0.1):
+async def _collect_response(composer_input, overrides=None, temperature=0.1):
     parts = []
-    async for chunk in compose_response(
-        composer_input,
-        tone_override=tone_override,
-        depth_override=depth_override,
-        cta_override=cta_override,
-        exposure_override=exposure_override,
-        temperature=temperature,
-    ):
+    async for chunk in compose_response(composer_input, overrides=overrides, temperature=temperature):
         if chunk.get("type") == "content":
             parts.append(chunk["content"])
     return "".join(parts)
@@ -161,6 +154,23 @@ def _variant_knob(label: str, presets: dict, key_prefix: str):
     else:
         st.markdown(f"**{label} — locked (both variants)**")
         text = _preset_text_editor(label, presets, f"{key_prefix}_locked")
+        return text, text
+
+
+def _variant_text_knob(label: str, default_text: str, key_prefix: str):
+    """Like _variant_knob, but for fixed-scaffold sections that have exactly one
+    canonical form (no preset menu to pick from) — still fully editable text,
+    still supports varying it independently between A and B."""
+    varied = st.checkbox(f"Vary {label} between A and B?", key=f"{key_prefix}_vary")
+    if varied:
+        c1, c2 = st.columns(2)
+        with c1:
+            text_a = st.text_area(f"{label} — Variant A", value=default_text, key=f"{key_prefix}_a", height=160)
+        with c2:
+            text_b = st.text_area(f"{label} — Variant B", value=default_text, key=f"{key_prefix}_b", height=160)
+        return text_a, text_b
+    else:
+        text = st.text_area(f"{label} — locked (both variants)", value=default_text, key=f"{key_prefix}_locked", height=160)
         return text, text
 
 
@@ -444,8 +454,10 @@ if stakeholder_mode:
                         tone_a_text = tone_b_text = _TONE_INSTRUCTIONS[round_cfg["locked_tone"]]
                         temp_a, temp_b = round_cfg["value_a"], round_cfg["value_b"]
 
-                    resp_a = run_async(_collect_response(sh_composer_input, tone_a_text, temp_a))
-                    resp_b = run_async(_collect_response(sh_composer_input, tone_b_text, temp_b))
+                    resp_a = run_async(_collect_response(
+                        sh_composer_input, {"tone_instruction": tone_a_text}, temp_a))
+                    resp_b = run_async(_collect_response(
+                        sh_composer_input, {"tone_instruction": tone_b_text}, temp_b))
 
                     # Randomise which side "A"/"B" lands on so position never carries signal.
                     flip = random.random() < 0.5
@@ -726,16 +738,18 @@ else:
         )
 
         if ab_mode:
-            # ── Step 6 (A/B): Full tone-parameter comparison ────────────────────
+            # ── Step 6 (A/B): Every prompt section, fully editable ──────────────
             st.subheader("🧪 Step 6 — Tone A/B Comparison")
             st.caption(
-                "Toggle \"Vary\" on whichever knobs you want to test this turn — each becomes an "
-                "editable text box per variant, seeded from a preset but free to rewrite. Anything "
-                "left off stays locked to one shared (still editable) value for both variants."
+                "Every section of the prompt that can shape tone is editable here — not just tone "
+                "itself. Toggle \"Vary\" on whichever ones you want to test this turn; each becomes an "
+                "editable text box per variant. Anything left off stays locked to one shared (still "
+                "editable) value for both variants."
             )
 
             turn_key = len(messages)  # identifies this turn, so a stale result from a prior turn never renders
 
+            st.markdown("##### Per-decision knobs")
             with st.expander("Tone", expanded=True):
                 tone_a_text, tone_b_text = _variant_knob("Tone", _TONE_INSTRUCTIONS, "ab_tone")
             with st.expander("Temperature", expanded=True):
@@ -746,26 +760,49 @@ else:
                 cta_a_text, cta_b_text = _variant_knob("CTA pressure", _CTA_INSTRUCTIONS, "ab_cta")
             with st.expander("Product exposure"):
                 exposure_a_text, exposure_b_text = _variant_knob("Product exposure", _EXPOSURE_INSTRUCTIONS, "ab_exposure")
+            with st.expander("Response structure"):
+                structure_a_text, structure_b_text = _variant_knob("Response structure", _RESPONSE_STRUCTURES, "ab_structure")
+
+            st.markdown("##### Fixed scaffold (previously locked as the control — now editable too)")
+            with st.expander("Brand framing"):
+                brand_a_text, brand_b_text = _variant_text_knob(
+                    "Brand framing", FIXED_SECTION_DEFAULTS["brand_framing"], "ab_brand")
+            with st.expander("Emerson Chat Voice (authority / resolution-test rule)"):
+                voice_a_text, voice_b_text = _variant_text_knob(
+                    "Voice block", FIXED_SECTION_DEFAULTS["voice_block"], "ab_voice")
+            with st.expander("Curl philosophy"):
+                philosophy_a_text, philosophy_b_text = _variant_text_knob(
+                    "Philosophy block", FIXED_SECTION_DEFAULTS["philosophy_block"], "ab_philosophy")
+            with st.expander("Diagnostic reasoning"):
+                reasoning_a_text, reasoning_b_text = _variant_text_knob(
+                    "Diagnostic reasoning block", FIXED_SECTION_DEFAULTS["diagnostic_reasoning_block"], "ab_reasoning")
+            with st.expander("Task footer"):
+                footer_a_text, footer_b_text = _variant_text_knob(
+                    "Task footer", FIXED_SECTION_DEFAULTS["task_footer"], "ab_footer")
 
             if st.button("Generate both →", type="primary"):
+                overrides_a = {
+                    "tone_instruction": tone_a_text, "depth_instruction": depth_a_text,
+                    "cta_instruction": cta_a_text, "exposure_instruction": exposure_a_text,
+                    "response_structure": structure_a_text, "brand_framing": brand_a_text,
+                    "voice_block": voice_a_text, "philosophy_block": philosophy_a_text,
+                    "diagnostic_reasoning_block": reasoning_a_text, "task_footer": footer_a_text,
+                }
+                overrides_b = {
+                    "tone_instruction": tone_b_text, "depth_instruction": depth_b_text,
+                    "cta_instruction": cta_b_text, "exposure_instruction": exposure_b_text,
+                    "response_structure": structure_b_text, "brand_framing": brand_b_text,
+                    "voice_block": voice_b_text, "philosophy_block": philosophy_b_text,
+                    "diagnostic_reasoning_block": reasoning_b_text, "task_footer": footer_b_text,
+                }
                 with st.spinner("Composing variant A..."):
-                    resp_a = run_async(_collect_response(
-                        composer_input, tone_a_text, depth_a_text, cta_a_text, exposure_a_text, temp_a,
-                    ))
+                    resp_a = run_async(_collect_response(composer_input, overrides_a, temp_a))
                 with st.spinner("Composing variant B..."):
-                    resp_b = run_async(_collect_response(
-                        composer_input, tone_b_text, depth_b_text, cta_b_text, exposure_b_text, temp_b,
-                    ))
+                    resp_b = run_async(_collect_response(composer_input, overrides_b, temp_b))
                 st.session_state.ab_result = {
                     "turn_key": turn_key,
-                    "a": {
-                        "tone": tone_a_text, "depth": depth_a_text, "cta": cta_a_text,
-                        "exposure": exposure_a_text, "temperature": temp_a, "response": resp_a,
-                    },
-                    "b": {
-                        "tone": tone_b_text, "depth": depth_b_text, "cta": cta_b_text,
-                        "exposure": exposure_b_text, "temperature": temp_b, "response": resp_b,
-                    },
+                    "a": {"overrides": overrides_a, "temperature": temp_a, "response": resp_a},
+                    "b": {"overrides": overrides_b, "temperature": temp_b, "response": resp_b},
                     "resolved": False,
                 }
 
