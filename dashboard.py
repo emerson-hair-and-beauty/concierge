@@ -4,9 +4,11 @@ Run: streamlit run dashboard.py
 """
 
 import asyncio
+import difflib
 import json
 import os
 import random
+import sqlite3
 import sys
 import uuid
 from datetime import datetime
@@ -26,7 +28,7 @@ from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.session_intent.session_intent_service import process_session_intent
 from app.services.decision_state.response_composer import (
     compose_response, _TONE_INSTRUCTIONS, _DEPTH_INSTRUCTIONS, _CTA_INSTRUCTIONS, _EXPOSURE_INSTRUCTIONS,
-    _RESPONSE_STRUCTURES, FIXED_SECTION_DEFAULTS,
+    _RESPONSE_STRUCTURES, FIXED_SECTION_DEFAULTS, render_response_prompt,
 )
 from app.services.decision_state.pipeline import _fetch_candidate_products
 from app.services.decision_state.texture_modifiers import resolve_texture_modifiers
@@ -34,6 +36,7 @@ from app.services.resilience import get_degraded_events
 
 FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "feedback_log.jsonl")
 AB_LOG_FILE = os.path.join(os.path.dirname(__file__), "tone_ab_log.jsonl")
+EXPERIMENT_DB_FILE = os.path.join(os.path.dirname(__file__), "experiment_versions.sqlite3")
 TONE_PRESETS = list(_TONE_INSTRUCTIONS.keys())
 
 # ---------------------------------------------------------------------------
@@ -113,9 +116,97 @@ def save_ab_feedback(entry: dict):
         f.write(json.dumps(entry) + "\n")
 
 
-async def _collect_response(composer_input, overrides=None, temperature=0.1):
+def _experiment_db():
+    conn = sqlite3.connect(EXPERIMENT_DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def initialise_experiment_store():
+    """A small local revision store; each generated run is immutable."""
+    with _experiment_db() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS test_suites (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS experiment_revisions (
+                id TEXT PRIMARY KEY, suite_id TEXT NOT NULL, parent_id TEXT,
+                created_at TEXT NOT NULL, input_snapshot TEXT NOT NULL,
+                variant_a TEXT NOT NULL, variant_b TEXT NOT NULL,
+                FOREIGN KEY(suite_id) REFERENCES test_suites(id)
+            );
+            CREATE TABLE IF NOT EXISTS experiment_feedback (
+                id TEXT PRIMARY KEY, revision_id TEXT NOT NULL, created_at TEXT NOT NULL,
+                choice TEXT NOT NULL, note TEXT NOT NULL,
+                FOREIGN KEY(revision_id) REFERENCES experiment_revisions(id)
+            );
+        """)
+        conn.execute("INSERT OR IGNORE INTO test_suites VALUES (?, ?, ?)", ("default", "Untitled test suite", datetime.now().isoformat()))
+
+
+def list_test_suites() -> list[dict]:
+    with _experiment_db() as conn:
+        return [dict(row) for row in conn.execute("SELECT * FROM test_suites ORDER BY created_at DESC")]
+
+
+def create_test_suite(name: str) -> str:
+    suite_id = str(uuid.uuid4())
+    with _experiment_db() as conn:
+        conn.execute("INSERT INTO test_suites VALUES (?, ?, ?)", (suite_id, name.strip(), datetime.now().isoformat()))
+    return suite_id
+
+
+def save_experiment_revision(suite_id: str, input_snapshot: dict, variant_a: dict, variant_b: dict) -> str:
+    revision_id = str(uuid.uuid4())
+    with _experiment_db() as conn:
+        previous = conn.execute(
+            "SELECT id FROM experiment_revisions WHERE suite_id = ? ORDER BY created_at DESC LIMIT 1", (suite_id,)
+        ).fetchone()
+        conn.execute(
+            "INSERT INTO experiment_revisions VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (revision_id, suite_id, previous["id"] if previous else None, datetime.now().isoformat(),
+             json.dumps(input_snapshot), json.dumps(variant_a), json.dumps(variant_b)),
+        )
+    return revision_id
+
+
+def save_experiment_review(revision_id: str, choice: str, note: str):
+    with _experiment_db() as conn:
+        conn.execute("INSERT INTO experiment_feedback VALUES (?, ?, ?, ?, ?)",
+                     (str(uuid.uuid4()), revision_id, datetime.now().isoformat(), choice, note))
+
+
+def load_experiment_revisions(suite_id: str, limit: int = 20) -> list[dict]:
+    with _experiment_db() as conn:
+        rows = conn.execute("""
+            SELECT r.*, f.choice, f.note, f.created_at AS reviewed_at
+            FROM experiment_revisions r
+            LEFT JOIN experiment_feedback f ON f.revision_id = r.id
+            WHERE r.suite_id = ? ORDER BY r.created_at DESC LIMIT ?
+        """, (suite_id, limit)).fetchall()
+    revisions = []
+    for row in rows:
+        revision = dict(row)
+        for key in ("input_snapshot", "variant_a", "variant_b"):
+            revision[key] = json.loads(revision[key])
+        revisions.append(revision)
+    return revisions
+
+
+def _json_editor(label: str, value, key: str, height: int = 260):
+    """Show a response-contributing value as editable JSON and validate it."""
+    text = st.text_area(label, value=json.dumps(value, indent=2, default=str), key=key, height=height)
+    try:
+        return json.loads(text), None
+    except json.JSONDecodeError as exc:
+        return value, str(exc)
+
+
+async def _collect_response(composer_input, overrides=None, temperature=0.1, prompt_override=None):
     parts = []
-    async for chunk in compose_response(composer_input, overrides=overrides, temperature=temperature):
+    async for chunk in compose_response(
+        composer_input, overrides=overrides, temperature=temperature, prompt_override=prompt_override
+    ):
         if chunk.get("type") == "content":
             parts.append(chunk["content"])
     return "".join(parts)
@@ -202,6 +293,8 @@ def badge(label: str, value: str, color: str = "#2d2d2d") -> str:
 # Page config
 # ---------------------------------------------------------------------------
 
+initialise_experiment_store()
+
 st.set_page_config(
     page_title="Emerson Concierge — AI Testing Dashboard",
     page_icon="💇",
@@ -270,12 +363,29 @@ with st.sidebar:
             "Step 6 becomes a two-column comparison — pick a tone preset and "
             "temperature per side. Preferences saved to `tone_ab_log.jsonl`."
         )
+
+        st.divider()
+        st.subheader("Versioned test suite")
+        suites = list_test_suites()
+        suite_names = {suite["id"]: suite["name"] for suite in suites}
+        active_suite_id = st.selectbox("Save experiments to", list(suite_names), format_func=suite_names.get)
+        new_suite_name = st.text_input("New suite name", placeholder="e.g. Humidity-frizz tone tests")
+        if st.button("Create test suite", use_container_width=True) and new_suite_name.strip():
+            try:
+                create_test_suite(new_suite_name)
+                st.rerun()
+            except sqlite3.IntegrityError:
+                st.error("A suite with that name already exists.")
     elif stakeholder_mode:
         st.caption(
             "A blind, one-variable-at-a-time test loop for non-technical reviewers. "
             "Configure the round below, then hand the screen to your reviewer — no "
             "tone/temperature jargon is shown to them. Preferences saved to `tone_ab_log.jsonl`."
         )
+
+        active_suite_id = "default"
+    else:
+        active_suite_id = "default"
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +426,33 @@ if "user_id" not in st.session_state:
 
 st.title("Emerson Concierge — AI Testing Dashboard")
 st.caption("Type a hair concern below. The dashboard shows every decision the AI makes before responding.")
+
+with st.expander("Experiment history", expanded=False):
+    revisions = load_experiment_revisions(active_suite_id)
+    if not revisions:
+        st.caption("No revisions in this suite yet. Each Engineer A/B generation creates an immutable revision.")
+    for run_index, revision in enumerate(revisions):
+        st.markdown(f"**Revision {len(revisions) - run_index}** · {revision['created_at']} · `{revision['id']}`")
+        if revision.get("choice"):
+            st.success(f"Feedback: {revision['choice']}")
+            if revision.get("note"):
+                st.caption(revision["note"])
+        if run_index + 1 < len(revisions):
+            previous = revisions[run_index + 1]
+            diff = list(difflib.unified_diff(
+                previous["variant_a"]["prompt"].splitlines(), revision["variant_a"]["prompt"].splitlines(),
+                fromfile="previous A", tofile="this A", lineterm=""
+            ))
+            if diff:
+                st.code("\n".join(diff[:100]), language="diff")
+            else:
+                st.caption("No Variant A prompt change from the prior experiment.")
+        with st.expander("Recorded input, prompts, and outputs"):
+            st.json(revision["input_snapshot"])
+            st.text_area("Variant A prompt", revision["variant_a"]["prompt"], disabled=True, key=f"history_prompt_a_{revision['id']}")
+            st.text_area("Variant A output", revision["variant_a"]["response"], disabled=True, key=f"history_a_{revision['id']}")
+            st.text_area("Variant B prompt", revision["variant_b"]["prompt"], disabled=True, key=f"history_prompt_b_{revision['id']}")
+            st.text_area("Variant B output", revision["variant_b"]["response"], disabled=True, key=f"history_b_{revision['id']}")
 
 # ── Infra reliability banner ────────────────────────────────────────────────
 # Session memory (signal history, decision-state progression) depends entirely
@@ -582,6 +719,15 @@ else:
             c1.caption(f"Confidence: {signals_raw.get('confidence_score', 0):.0%}")
             c2.caption(f"Fallback used: {'yes' if signals_raw.get('fallback_used') else 'no'}")
 
+            if ab_mode:
+                edited_signals, signals_error = _json_editor(
+                    "Signal detector output (JSON)", signals_raw, f"trace_signals_{len(messages)}", height=220
+                )
+                if signals_error:
+                    st.error(f"Signal JSON is invalid: {signals_error}")
+                elif st.checkbox("Use edited signal output downstream", key=f"use_trace_signals_{len(messages)}"):
+                    signals_raw = edited_signals
+
         # ── Clarification gate ────────────────────────────────────────────────
         _no_signals   = not any(signals_raw.get(k) for k in SIGNAL_NAMES)
         _low_conf     = signals_raw.get("confidence_score", 0) < 0.5
@@ -606,6 +752,19 @@ else:
             c3.metric("Confidence",       session_intent.confidence_level)
             c4.metric("Friction",         session_intent.friction_score)
             c5.metric("Emotion",          session_intent.emotional_state)
+
+            if ab_mode:
+                intent_dump = session_intent.model_dump(mode="json")
+                edited_intent, intent_error = _json_editor(
+                    "Intent detector output (JSON)", intent_dump, f"trace_intent_{len(messages)}", height=220
+                )
+                if intent_error:
+                    st.error(f"Intent JSON is invalid: {intent_error}")
+                elif st.checkbox("Use edited intent output downstream", key=f"use_trace_intent_{len(messages)}"):
+                    try:
+                        session_intent = type(session_intent).model_validate(edited_intent)
+                    except Exception as exc:
+                        st.error(f"Edited intent cannot be used: {exc}")
 
         # ── Step 3: Decision Engine ───────────────────────────────────────────
         with st.expander("⚙️ Step 3 — What does the hair actually need?", expanded=True):
@@ -749,6 +908,24 @@ else:
 
             turn_key = len(messages)  # identifies this turn, so a stale result from a prior turn never renders
 
+            # The complete resolved input to the LLM stage, after all upstream
+            # pipeline work. Editing this is local to the experiment only.
+            input_snapshot = composer_input.model_dump(mode="json")
+            with st.expander("Full pipeline trace — editable response inputs", expanded=True):
+                st.caption("This includes the resolved strategy, delivery plan, profile, environment, retrieved products, and conversation. The signal and intent outputs in Steps 1–2 are their provenance.")
+                edited_snapshot, snapshot_error = _json_editor(
+                    "Response-composer input (JSON)", input_snapshot, f"trace_input_{turn_key}", height=460
+                )
+                use_edited_input = st.checkbox("Use this edited input for both variants", key=f"use_trace_input_{turn_key}")
+                if snapshot_error:
+                    st.error(f"Input JSON is invalid: {snapshot_error}")
+            experiment_input = composer_input
+            if use_edited_input and not snapshot_error:
+                try:
+                    experiment_input = ResponseComposerInput.model_validate(edited_snapshot)
+                except Exception as exc:
+                    st.error(f"Edited input cannot be used: {exc}")
+
             st.markdown("##### Per-decision knobs")
             with st.expander("Tone", expanded=True):
                 tone_a_text, tone_b_text = _variant_knob("Tone", _TONE_INSTRUCTIONS, "ab_tone")
@@ -780,6 +957,22 @@ else:
                 footer_a_text, footer_b_text = _variant_text_knob(
                     "Task footer", FIXED_SECTION_DEFAULTS["task_footer"], "ab_footer")
 
+            preview_overrides_a = {
+                "tone_instruction": tone_a_text, "depth_instruction": depth_a_text, "cta_instruction": cta_a_text,
+                "exposure_instruction": exposure_a_text, "response_structure": structure_a_text,
+                "brand_framing": brand_a_text, "voice_block": voice_a_text, "philosophy_block": philosophy_a_text,
+                "diagnostic_reasoning_block": reasoning_a_text, "task_footer": footer_a_text,
+            }
+            preview_overrides_b = {
+                "tone_instruction": tone_b_text, "depth_instruction": depth_b_text, "cta_instruction": cta_b_text,
+                "exposure_instruction": exposure_b_text, "response_structure": structure_b_text,
+                "brand_framing": brand_b_text, "voice_block": voice_b_text, "philosophy_block": philosophy_b_text,
+                "diagnostic_reasoning_block": reasoning_b_text, "task_footer": footer_b_text,
+            }
+            with st.expander("Final rendered prompt — every line editable", expanded=True):
+                prompt_a = st.text_area("Variant A exact model prompt", value=render_response_prompt(experiment_input, preview_overrides_a), key=f"prompt_a_{turn_key}", height=560)
+                prompt_b = st.text_area("Variant B exact model prompt", value=render_response_prompt(experiment_input, preview_overrides_b), key=f"prompt_b_{turn_key}", height=560)
+
             if st.button("Generate both →", type="primary"):
                 overrides_a = {
                     "tone_instruction": tone_a_text, "depth_instruction": depth_a_text,
@@ -796,15 +989,20 @@ else:
                     "diagnostic_reasoning_block": reasoning_b_text, "task_footer": footer_b_text,
                 }
                 with st.spinner("Composing variant A..."):
-                    resp_a = run_async(_collect_response(composer_input, overrides_a, temp_a))
+                    resp_a = run_async(_collect_response(experiment_input, overrides_a, temp_a, prompt_a))
                 with st.spinner("Composing variant B..."):
-                    resp_b = run_async(_collect_response(composer_input, overrides_b, temp_b))
+                    resp_b = run_async(_collect_response(experiment_input, overrides_b, temp_b, prompt_b))
                 st.session_state.ab_result = {
                     "turn_key": turn_key,
-                    "a": {"overrides": overrides_a, "temperature": temp_a, "response": resp_a},
-                    "b": {"overrides": overrides_b, "temperature": temp_b, "response": resp_b},
+                    "input_snapshot": experiment_input.model_dump(mode="json"),
+                    "a": {"overrides": overrides_a, "temperature": temp_a, "prompt": prompt_a, "response": resp_a},
+                    "b": {"overrides": overrides_b, "temperature": temp_b, "prompt": prompt_b, "response": resp_b},
                     "resolved": False,
                 }
+                st.session_state.ab_result["experiment_id"] = save_experiment_revision(
+                    active_suite_id, st.session_state.ab_result["input_snapshot"],
+                    st.session_state.ab_result["a"], st.session_state.ab_result["b"],
+                )
 
             result = st.session_state.ab_result
             if result and result.get("turn_key") == turn_key:
@@ -828,10 +1026,14 @@ else:
                         "variant_b":      result["b"],
                         "preferred":      choice,
                     })
+                    save_experiment_review(
+                        result["experiment_id"], choice, st.session_state.get("experiment_feedback_note", "")
+                    )
                     st.session_state.messages.append({"role": "assistant", "content": chosen_response})
                     st.session_state.ab_result["resolved"] = True
 
                 if not result.get("resolved"):
+                    st.text_area("Experiment feedback (what changed in tone, and why?)", key="experiment_feedback_note")
                     p1, p2, p3 = st.columns(3)
                     if p1.button("👈 Prefer A", use_container_width=True):
                         _resolve_ab("a", result["a"]["response"])

@@ -359,6 +359,7 @@ async def compose_response(
     composer_input: ResponseComposerInput,
     overrides: dict[str, str] | None = None,
     temperature: float = 0.1,
+    prompt_override: str | None = None,
 ) -> AsyncGenerator:
     """`overrides` may set any of: brand_framing, voice_block, philosophy_block,
     diagnostic_reasoning_block, task_footer, tone_instruction, depth_instruction,
@@ -371,7 +372,28 @@ async def compose_response(
     plan = composer_input.jte_delivery_plan
     decision_state = payload.decision_state or "balanced_routine_first"
 
-    prompt = _COMPOSER_PROMPT.format(
+    prompt = render_response_prompt(composer_input, overrides)
+    # Test-only escape hatch: use the exact edited prompt, rather than the
+    # canonical template. Production callers do not pass this argument.
+    if prompt_override is not None:
+        prompt = prompt_override
+
+    async for chunk in run_llm_agent(prompt, temperature=temperature):
+        yield chunk
+
+
+def render_response_prompt(
+    composer_input: ResponseComposerInput,
+    overrides: dict[str, str] | None = None,
+) -> str:
+    """Render the exact LLM prompt without making an LLM call."""
+    overrides = overrides or {}
+    profile = composer_input.profile_state
+    payload = composer_input.strategy_payload
+    plan = composer_input.jte_delivery_plan
+    decision_state = payload.decision_state or "balanced_routine_first"
+
+    return _COMPOSER_PROMPT.format(
         brand_framing=overrides.get("brand_framing", _BRAND_FRAMING),
         voice_block=overrides.get("voice_block", _VOICE_BLOCK),
         philosophy_block=overrides.get("philosophy_block", _PHILOSOPHY_BLOCK),
@@ -396,6 +418,3 @@ async def compose_response(
         task_footer=overrides.get("task_footer", _TASK_FOOTER),
         products_section=_build_products_section(composer_input),
     )
-
-    async for chunk in run_llm_agent(prompt, temperature=temperature):
-        yield chunk
