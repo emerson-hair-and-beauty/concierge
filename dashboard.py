@@ -352,16 +352,16 @@ with st.sidebar:
     st.divider()
     test_mode = st.radio(
         "Mode",
-        ["Normal", "🔬 Engineer A/B", "🧑‍🤝‍🧑 Stakeholder blind test"],
+        ["🧪 Full experiment suite", "Normal", "🧑‍🤝‍🧑 Stakeholder blind test"],
         index=0,
     )
-    ab_mode = test_mode == "🔬 Engineer A/B"
+    ab_mode = test_mode == "🧪 Full experiment suite"
     stakeholder_mode = test_mode == "🧑‍🤝‍🧑 Stakeholder blind test"
 
     if ab_mode:
         st.caption(
-            "Step 6 becomes a two-column comparison — pick a tone preset and "
-            "temperature per side. Preferences saved to `tone_ab_log.jsonl`."
+            "Send a message, then edit the complete pipeline trace and both exact prompts in Step 6. "
+            "Every run is saved as a versioned revision."
         )
 
         st.divider()
@@ -453,6 +453,13 @@ with st.expander("Experiment history", expanded=False):
             st.text_area("Variant A output", revision["variant_a"]["response"], disabled=True, key=f"history_a_{revision['id']}")
             st.text_area("Variant B prompt", revision["variant_b"]["prompt"], disabled=True, key=f"history_prompt_b_{revision['id']}")
             st.text_area("Variant B output", revision["variant_b"]["response"], disabled=True, key=f"history_b_{revision['id']}")
+
+if ab_mode:
+    st.info(
+        "Full experiment suite is active. Submit a chat message to generate its trace; "
+        "Step 6 then opens the editable signal/intent outputs, resolved composer input, "
+        "named prompt blocks, and complete rendered prompts."
+    )
 
 # ── Infra reliability banner ────────────────────────────────────────────────
 # Session memory (signal history, decision-state progression) depends entirely
