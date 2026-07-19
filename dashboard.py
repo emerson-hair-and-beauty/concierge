@@ -289,6 +289,17 @@ def badge(label: str, value: str, color: str = "#2d2d2d") -> str:
     )
 
 
+def insight_card(title: str, value: str, detail: str, accent: str = "#7c4dff"):
+    """Plain-language card for stakeholders; technical detail stays available below."""
+    st.markdown(
+        f'<div class="insight-card" style="border-top-color:{accent}">'
+        f'<div class="insight-card-title">{title}</div>'
+        f'<div class="insight-card-value">{value}</div>'
+        f'<div class="insight-card-detail">{detail}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Page config
 # ---------------------------------------------------------------------------
@@ -312,6 +323,13 @@ st.markdown("""
     }
     .signal-active { color: #2e7d32; font-weight: bold; }
     .signal-inactive { color: #aaa; }
+    .insight-card {
+        min-height: 130px; padding: 16px; background: #fff; border: 1px solid #e7e3ee;
+        border-top: 4px solid #7c4dff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+    .insight-card-title { font-size: 12px; color: #6b6474; text-transform: uppercase; letter-spacing: .04em; }
+    .insight-card-value { margin: 9px 0 7px; font-size: 18px; font-weight: 650; color: #261f2f; }
+    .insight-card-detail { font-size: 13px; line-height: 1.45; color: #5f5869; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -904,22 +922,35 @@ else:
         )
 
         if ab_mode:
-            # ── Step 6 (A/B): Every prompt section, fully editable ──────────────
-            st.subheader("🧪 Step 6 — Tone A/B Comparison")
+            # ── Step 6 (A/B): stakeholder-facing experiment workspace ───────────
+            st.subheader("🧪 Step 6 — Experiment workspace")
             st.caption(
-                "Every section of the prompt that can shape tone is editable here — not just tone "
-                "itself. Toggle \"Vary\" on whichever ones you want to test this turn; each becomes an "
-                "editable text box per variant. Anything left off stays locked to one shared (still "
-                "editable) value for both variants."
+                "Start with the four cards below. They tell the story of this turn in plain language; "
+                "the editable controls and complete technical trace sit underneath."
             )
+
+            active_signal_names = [signal_map[key] for key in signal_map if signals_raw.get(key)]
+            summary_cols = st.columns(4)
+            with summary_cols[0]:
+                insight_card("What we heard", user_input[:62] + ("…" if len(user_input) > 62 else ""),
+                             ", ".join(active_signal_names) if active_signal_names else "No strong hair signal was detected.", "#7c4dff")
+            with summary_cols[1]:
+                insight_card("What matters most", ds.replace("_", " ").title(),
+                             "This is the concern the system chose to address first.", "#e06c75")
+            with summary_cols[2]:
+                insight_card("How it will respond", delivery.response_mode.title(),
+                             f"{delivery.response_depth.title()} detail · {delivery.tone_profile.replace('_', ' ').title()} tone", "#1f8a70")
+            with summary_cols[3]:
+                product_summary = "No products will be shown." if delivery.product_exposure == "hidden" else f"{len(candidate_products)} relevant product options found."
+                insight_card("Product role", delivery.product_exposure.replace("_", " ").title(), product_summary, "#e09f3e")
 
             turn_key = len(messages)  # identifies this turn, so a stale result from a prior turn never renders
 
             # The complete resolved input to the LLM stage, after all upstream
             # pipeline work. Editing this is local to the experiment only.
             input_snapshot = composer_input.model_dump(mode="json")
-            with st.expander("Full pipeline trace — editable response inputs", expanded=True):
-                st.caption("This includes the resolved strategy, delivery plan, profile, environment, retrieved products, and conversation. The signal and intent outputs in Steps 1–2 are their provenance.")
+            with st.expander("Advanced: edit the complete pipeline trace", expanded=False):
+                st.caption("For detailed investigation: this includes the resolved strategy, delivery plan, profile, environment, retrieved products, and conversation. The signal and intent outputs in Steps 1–2 are their provenance.")
                 edited_snapshot, snapshot_error = _json_editor(
                     "Response-composer input (JSON)", input_snapshot, f"trace_input_{turn_key}", height=460
                 )
@@ -933,7 +964,8 @@ else:
                 except Exception as exc:
                     st.error(f"Edited input cannot be used: {exc}")
 
-            st.markdown("##### Per-decision knobs")
+            st.markdown("##### What should we change?")
+            st.caption("Keep a control locked when you do not want it to differ between A and B. Turn on “Vary” only for the idea you are testing.")
             with st.expander("Tone", expanded=True):
                 tone_a_text, tone_b_text = _variant_knob("Tone", _TONE_INSTRUCTIONS, "ab_tone")
             with st.expander("Temperature", expanded=True):
@@ -976,7 +1008,8 @@ else:
                 "brand_framing": brand_b_text, "voice_block": voice_b_text, "philosophy_block": philosophy_b_text,
                 "diagnostic_reasoning_block": reasoning_b_text, "task_footer": footer_b_text,
             }
-            with st.expander("Final rendered prompt — every line editable", expanded=True):
+            with st.expander("Advanced: the exact instruction sent to the model", expanded=False):
+                st.caption("This is the final assembled prompt. Edit it only when you want to test wording that does not fit one of the simpler controls above.")
                 prompt_a = st.text_area("Variant A exact model prompt", value=render_response_prompt(experiment_input, preview_overrides_a), key=f"prompt_a_{turn_key}", height=560)
                 prompt_b = st.text_area("Variant B exact model prompt", value=render_response_prompt(experiment_input, preview_overrides_b), key=f"prompt_b_{turn_key}", height=560)
 
