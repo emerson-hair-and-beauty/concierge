@@ -706,12 +706,17 @@ else:
         # Input — hidden while a clarification is pending so the user answers that first
         user_input = st.chat_input("Type a hair concern...")
 
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        st.session_state.feedback_given = False
+    active_turn = user_input or (st.session_state.get("active_experiment_turn") if ab_mode else None)
+    if active_turn:
+        # Streamlit reruns on every button click. Keep this turn alive while a
+        # stakeholder edits controls, generates variants, and gives feedback.
+        if user_input:
+            st.session_state.messages.append({"role": "user", "content": user_input})
+            st.session_state.active_experiment_turn = user_input
+            st.session_state.feedback_given = False
 
-        with st.chat_message("user"):
-            st.write(user_input)
+            with st.chat_message("user"):
+                st.write(user_input)
 
         messages = st.session_state.messages.copy()
 
@@ -932,7 +937,7 @@ else:
             active_signal_names = [signal_map[key] for key in signal_map if signals_raw.get(key)]
             summary_cols = st.columns(4)
             with summary_cols[0]:
-                insight_card("What we heard", user_input[:62] + ("…" if len(user_input) > 62 else ""),
+                insight_card("What we heard", active_turn[:62] + ("…" if len(active_turn) > 62 else ""),
                              ", ".join(active_signal_names) if active_signal_names else "No strong hair signal was detected.", "#7c4dff")
             with summary_cols[1]:
                 insight_card("What matters most", ds.replace("_", " ").title(),
@@ -1060,7 +1065,7 @@ else:
                     save_ab_feedback({
                         "timestamp":      datetime.now().isoformat(),
                         "profile":        profile_name,
-                        "user_input":     user_input,
+                        "user_input":     active_turn,
                         "decision_state": ds,
                         "variant_a":      result["a"],
                         "variant_b":      result["b"],
@@ -1071,6 +1076,7 @@ else:
                     )
                     st.session_state.messages.append({"role": "assistant", "content": chosen_response})
                     st.session_state.ab_result["resolved"] = True
+                    st.session_state.pop("active_experiment_turn", None)
 
                 if not result.get("resolved"):
                     st.text_area("Experiment feedback (what changed in tone, and why?)", key="experiment_feedback_note")
@@ -1112,7 +1118,7 @@ else:
             st.session_state.last_result = {
                 "timestamp":      datetime.now().isoformat(),
                 "profile":        profile_name,
-                "user_input":     user_input,
+                "user_input":     active_turn,
                 "decision_state": ds,
                 "response_mode":  delivery.response_mode,
                 "response":       full_response,
@@ -1149,6 +1155,7 @@ else:
             st.session_state.feedback_given = False
             st.session_state.shown_product_ids = set()
             st.session_state.ab_result = None
+            st.session_state.pop("active_experiment_turn", None)
             # New session id — otherwise signal/decision-state history from this test
             # conversation would keep bleeding into the "new" one via Supabase.
             st.session_state.session_id = f"dashboard-{uuid.uuid4()}"
