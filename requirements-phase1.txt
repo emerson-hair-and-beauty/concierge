@@ -1,0 +1,8 @@
+# Standalone Phase 1 API. Chat, push and tone-training packages are not required.
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+httpx
+openai
+google-genai

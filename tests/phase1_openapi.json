@@ -1,0 +1,1089 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Curl Concierge Phase 1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/plan": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Submit",
+        "operationId": "submit_api_plan_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plan/{plan_id}": {
+      "get": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Read Plan",
+        "operationId": "read_plan_api_plan__plan_id__get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PlanSnapshot"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "plan_id",
+                        "status"
+                      ],
+                      "properties": {
+                        "plan_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plan/{plan_id}/feedback": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Feedback",
+        "operationId": "feedback_api_plan__plan_id__feedback_post",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Feedback"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Events",
+        "operationId": "events_api_events_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventBatch"
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "$ref": "#/components/schemas/EventBatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Catalog",
+        "operationId": "catalog_api_catalog_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogBatch"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CatalogToken": []
+          }
+        ]
+      }
+    },
+    "/api/plan/{plan_id}/go": {
+      "get": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Go",
+        "operationId": "go_api_plan__plan_id__go_get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "shopify_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shopify Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhooks/shopify/orders-paid": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Orders Paid",
+        "operationId": "orders_paid_api_webhooks_shopify_orders_paid_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/phase1/health": {
+      "get": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Phase1 Health",
+        "operationId": "phase1_health_api_phase1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "CatalogBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "sync_id": {
+            "format": "uuid",
+            "title": "Sync Id",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "mode": {
+            "default": "full",
+            "enum": [
+              "full",
+              "partial"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogProduct"
+            },
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Products",
+            "type": "array"
+          },
+          "unmatched_matrix_skus": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 2000,
+            "title": "Unmatched Matrix Skus",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sync_id",
+          "generated_at",
+          "products"
+        ],
+        "title": "CatalogBatch",
+        "type": "object"
+      },
+      "CatalogProduct": {
+        "additionalProperties": false,
+        "properties": {
+          "sku": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_. -]+$",
+            "title": "Sku",
+            "type": "string"
+          },
+          "shopify_id": {
+            "maxLength": 30,
+            "pattern": "^[0-9]+$",
+            "title": "Shopify Id",
+            "type": "string"
+          },
+          "variant_id": {
+            "maxLength": 30,
+            "pattern": "^[0-9]+$",
+            "title": "Variant Id",
+            "type": "string"
+          },
+          "handle": {
+            "maxLength": 255,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "title": "Handle",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Price"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sku",
+          "shopify_id",
+          "variant_id",
+          "handle",
+          "title",
+          "price",
+          "currency",
+          "available"
+        ],
+        "title": "CatalogProduct",
+        "type": "object"
+      },
+      "Concern": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "absorption_blocked",
+              "hold_loss",
+              "breakage_active",
+              "buildup_present",
+              "coated_feel",
+              "scalp_sensitivity"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "Concern",
+        "type": "object"
+      },
+      "EventBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "quiz_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Quiz Id"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plan Id"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyEvent"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "EventBatch",
+        "type": "object"
+      },
+      "Feedback": {
+        "additionalProperties": false,
+        "properties": {
+          "rating": {
+            "enum": [
+              "very_closely",
+              "somewhat",
+              "not_quite",
+              "not_sure"
+            ],
+            "title": "Rating",
+            "type": "string"
+          },
+          "rejected_shopify_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Rejected Shopify Ids",
+            "type": "array"
+          },
+          "unclear_step": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unclear Step"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "Feedback",
+        "type": "object"
+      },
+      "JourneyEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "props": {
+            "additionalProperties": true,
+            "title": "Props",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "occurred_at"
+        ],
+        "title": "JourneyEvent",
+        "type": "object"
+      },
+      "PlanProduct": {
+        "additionalProperties": false,
+        "properties": {
+          "sku": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Sku",
+            "type": "string"
+          },
+          "shopify_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Shopify Id",
+            "type": "string"
+          },
+          "variant_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Variant Id",
+            "type": "string"
+          },
+          "handle": {
+            "maxLength": 255,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "title": "Handle",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "price": {
+            "pattern": "^\\d+(\\.\\d{1,2})?$",
+            "title": "Price",
+            "type": "string"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "why": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "shopify_id",
+          "variant_id",
+          "handle",
+          "name",
+          "price",
+          "currency",
+          "why"
+        ],
+        "title": "PlanProduct",
+        "type": "object"
+      },
+      "PlanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "quiz_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Quiz Id"
+          },
+          "texture": {
+            "enum": [
+              "2A",
+              "2B",
+              "2C",
+              "3A",
+              "3B",
+              "3C",
+              "4A",
+              "4B",
+              "4C"
+            ],
+            "title": "Texture",
+            "type": "string"
+          },
+          "density": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Density",
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          },
+          "porosity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Porosity"
+          },
+          "moisture_behaviour": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Moisture Behaviour"
+          },
+          "strand_thickness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "fine",
+                  "medium",
+                  "coarse"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Strand Thickness"
+          },
+          "elasticity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Elasticity"
+          },
+          "scalp_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "dry",
+                  "normal",
+                  "oily",
+                  "sensitive"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scalp State"
+          },
+          "humidity_response": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Humidity Response"
+          },
+          "hair_length": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hair Length"
+          },
+          "hair_goals": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Hair Goals",
+            "type": "array"
+          },
+          "concern_text": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Concern Text",
+            "type": "string"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Location"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "First Name"
+          },
+          "marketing_consent": {
+            "default": false,
+            "title": "Marketing Consent",
+            "type": "boolean"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          }
+        },
+        "required": [
+          "submission_id",
+          "texture",
+          "density",
+          "email"
+        ],
+        "title": "PlanRequest",
+        "type": "object"
+      },
+      "PlanSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "ready",
+            "title": "Status",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "you_told_us": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "You Told Us"
+          },
+          "summary": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "concerns": {
+            "items": {
+              "$ref": "#/components/schemas/Concern"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "climate_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Climate Note"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStep"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id",
+          "status",
+          "created_at",
+          "you_told_us",
+          "summary",
+          "concerns",
+          "climate_note",
+          "steps"
+        ],
+        "title": "PlanSnapshot",
+        "type": "object"
+      },
+      "PlanStep": {
+        "additionalProperties": false,
+        "properties": {
+          "order": {
+            "minimum": 1,
+            "title": "Order",
+            "type": "integer"
+          },
+          "step": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Step",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "why": {
+            "maxLength": 800,
+            "minLength": 1,
+            "title": "Why",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/PlanProduct"
+            },
+            "title": "Products",
+            "type": "array"
+          }
+        },
+        "required": [
+          "order",
+          "step",
+          "title",
+          "why",
+          "products"
+        ],
+        "title": "PlanStep",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "CatalogToken": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

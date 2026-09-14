@@ -11,3 +11,8 @@ services:
         sync: false
       - key: PINECONE_INDEX
         sync: false
+      # Embeddings for the Emerson tone model (app/services/tone_guard.py).
+      # Without it the model file still deploys but cannot be scored against, so
+      # tone ranking degrades to off and replies ship unranked.
+      - key: EMBEDDING_KEY
+        sync: false

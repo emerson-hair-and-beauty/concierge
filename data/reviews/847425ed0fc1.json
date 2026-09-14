@@ -1,0 +1,174 @@
+{
+ "version": "847425ed0fc1",
+ "updated_at": "2026-08-11T12:25:57+00:00",
+ "replies": [
+  {
+   "id": "847425ed0fc1/buildup/1",
+   "version": "847425ed0fc1",
+   "scenario": "buildup",
+   "title": "Products stopped absorbing",
+   "position": 1,
+   "customer": "my curls have gone limp and my leave-in just sits on top of my hair now",
+   "reply": "Your leave-in is just sitting on your hair because a layer of residue is blocking absorption. This happens when product buildup, sebum, or minerals from hard water coat your cuticle, especially with low porosity curls like yours. No conditioner or styling product will absorb until you remove that layer. Start with a clarifying or chelating wash to reset your hair’s surface. Afterward, monitor how your leave-in absorbs—true absorption returns when the cuticle is clear.",
+   "selected": {
+    "decision_state": "reset_first",
+    "response_mode": "troubleshoot",
+    "response_depth": "medium",
+    "tone_profile": "expert_calm",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:55:14+00:00",
+   "verdict": "yes",
+   "note": "",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  },
+  {
+   "id": "847425ed0fc1/buildup/2",
+   "version": "847425ed0fc1",
+   "scenario": "buildup",
+   "title": "Products stopped absorbing",
+   "position": 2,
+   "customer": "my curls have gone limp and my leave-in just sits on top of my hair now",
+   "reply": "Your leave-in is sitting on your hair because there is a layer blocking it—usually product, natural oils, or minerals from hard water. That barrier has sealed over your cuticle and stopped anything new from getting in, so your curls go limp and nothing absorbs. This is not about dryness or needing richer formulas; it is an absorption problem, and it always starts with buildup. Right now, the only way forward is a clarifying or chelating wash to clear that layer completely. After the reset, watch how your hair responds—true absorption comes back immediately if the buildup was the cause.",
+   "selected": {
+    "decision_state": "reset_first",
+    "response_mode": "troubleshoot",
+    "response_depth": "medium",
+    "tone_profile": "expert_calm",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:55:14+00:00",
+   "verdict": "no",
+   "note": "doesn't sound intelligent in the Emerson tone. \" a layer blocking it\", it would be more Emerson if it explained what that layer is.",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  },
+  {
+   "id": "847425ed0fc1/coated/1",
+   "version": "847425ed0fc1",
+   "scenario": "coated",
+   "title": "Hair feels heavy and dull",
+   "position": 1,
+   "customer": "everything i put on my hair feels like it just sits there and my curls feel heavy and dull",
+   "reply": "Your products are sitting on the surface because a film is blocking absorption. This always comes from residue: old product, scalp oils, or minerals from the UAE’s hard water. Until you clear that layer with a clarifying or chelating wash, anything you apply will stay on top and weigh your curls down. Start with a reset wash to remove buildup. After that, watch how your hair absorbs product—true moisture and definition only return once the cuticle can take in what you apply.",
+   "selected": {
+    "decision_state": "reset_first",
+    "response_mode": "troubleshoot",
+    "response_depth": "medium",
+    "tone_profile": "expert_calm",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:55:33+00:00",
+   "verdict": "no",
+   "note": "Sound too clinical",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  },
+  {
+   "id": "847425ed0fc1/coated/2",
+   "version": "847425ed0fc1",
+   "scenario": "coated",
+   "title": "Hair feels heavy and dull",
+   "position": 2,
+   "customer": "everything i put on my hair feels like it just sits there and my curls feel heavy and dull",
+   "reply": "Your products are coating your hair instead of absorbing, which is why everything feels heavy and lacks life. This always traces back to buildup—either from old product, natural oils, or minerals left behind by hard water. Before you reach for anything richer or heavier, you need a deep cleanse to clear that residue and let your curls breathe. Start with a clarifying or chelating wash. After that reset, watch how your hair responds to your usual routine—true absorption will show up as lighter, springier curls.",
+   "selected": {
+    "decision_state": "reset_first",
+    "response_mode": "troubleshoot",
+    "response_depth": "medium",
+    "tone_profile": "expert_calm",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:55:33+00:00",
+   "verdict": "yes",
+   "note": "Educates and them recomments.",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  },
+  {
+   "id": "847425ed0fc1/climate/1",
+   "version": "847425ed0fc1",
+   "scenario": "climate",
+   "title": "Definition gone by lunchtime",
+   "position": 1,
+   "customer": "my definition is gone by lunchtime every day here in Dubai",
+   "reply": "Your definition is dropping because Dubai’s humidity is swelling your cuticle and lifting your curl pattern apart by midday. In this climate, moisture in the air pushes past your hair’s natural barrier, so frizz wins out over hold. You need a finishing approach built around anti-humectant ingredients and a sealing step that locks your definition in place. This strategy keeps the weather out, which is what matters here—more moisture or softer creams will only accelerate the collapse. Glycerin-heavy stylers are working against you; swap them for climate-control formulas that block humidity instead of pulling it in.",
+   "selected": {
+    "decision_state": "climate_control_first",
+    "response_mode": "educate",
+    "response_depth": "medium",
+    "tone_profile": "expert_calm",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:55:51+00:00",
+   "verdict": "no",
+   "note": "Generic AI",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  },
+  {
+   "id": "847425ed0fc1/climate/2",
+   "version": "847425ed0fc1",
+   "scenario": "climate",
+   "title": "Definition gone by lunchtime",
+   "position": 2,
+   "customer": "my definition is gone by lunchtime every day here in Dubai",
+   "reply": "Dubai’s humidity is disrupting your curl pattern by noon because it swells the cuticle and forces the curls apart. This is not a moisture shortage. It’s the climate interfering with your definition and pulling moisture into the hair shaft until it loses shape. You need a routine built around blocking that moisture out—glycerin-free stylers and a sealing finish. This works here because it shuts out the main cause of midday frizz, instead of layering on more hydration that the climate will undo before the day is out.",
+   "selected": {
+    "decision_state": "climate_control_first",
+    "response_mode": "educate",
+    "response_depth": "medium",
+    "tone_profile": "expert_calm",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:55:51+00:00",
+   "verdict": "no",
+   "note": "Doesn't sound sophiscated",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  },
+  {
+   "id": "847425ed0fc1/frustrated/1",
+   "version": "847425ed0fc1",
+   "scenario": "frustrated",
+   "title": "Ready to give up",
+   "position": 1,
+   "customer": "ive tried everything and nothing works, im honestly ready to just cut it all off",
+   "reply": "When nothing sticks, it’s because high porosity curls lose moisture as fast as they take it in. Strip your routine back to just gentle cleansing and sealing, no extra layers—let your hair reset and catch its breath.",
+   "selected": {
+    "decision_state": "simplify_and_reduce_friction",
+    "response_mode": "reassure",
+    "response_depth": "short",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:56:10+00:00",
+   "verdict": "no",
+   "note": "Sounds a bit clinical, less empower and understanding for a customer who appears frustrated.",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  },
+  {
+   "id": "847425ed0fc1/frustrated/2",
+   "version": "847425ed0fc1",
+   "scenario": "frustrated",
+   "title": "Ready to give up",
+   "position": 2,
+   "customer": "ive tried everything and nothing works, im honestly ready to just cut it all off",
+   "reply": "Your curls are resisting every routine because high porosity hair in our humidity grabs water and frizzes, then loses definition as moisture escapes. Strip your routine back to the basics—just a gentle cleanse and a single styler with hold—so you can see what your hair actually does on its own.",
+   "selected": {
+    "decision_state": "simplify_and_reduce_friction",
+    "response_mode": "reassure",
+    "response_depth": "short",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "soft",
+    "product_exposure": "hidden"
+   },
+   "recorded_at": "2026-08-04T14:56:10+00:00",
+   "verdict": "no",
+   "note": "Doesn't because we would recommend a reset first, that should be the default based on our prioritisation logic for diagnosing when customer suggests nothing seems to work. Separately we've not help her understand her hair characterics in full. The last sentence is good - the coaching tone",
+   "judged_at": "2026-08-11T12:25:57+00:00"
+  }
+ ]
+}

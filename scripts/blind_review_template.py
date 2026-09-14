@@ -1,0 +1,221 @@
+"""HTML shell for the blind review page. Kept apart from the builder so the CSS
+and JS are editable without wading through string escaping."""
+
+HEAD = """<title>Emerson concierge &mdash; reply review</title>
+<style>
+  :root{
+    --ground:#F6F8F8; --raised:#FFFFFF; --ink:#12242A; --muted:#5E7178;
+    --rule:#DCE4E5; --accent:#0F7F87; --accent-soft:#E4F0F1; --warm:#B4621C;
+    --warm-soft:#F7EBE0; --field:#FBFCFC;
+    --serif: Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;
+    --sans: system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --ground:#0D181C; --raised:#132227; --ink:#E4EDEF; --muted:#93A7AE;
+           --rule:#25383E; --accent:#3FB3BB; --accent-soft:#14343A; --warm:#DD9152;
+           --warm-soft:#3A2A1C; --field:#0F1D22; }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0D181C; --raised:#132227; --ink:#E4EDEF; --muted:#93A7AE;
+    --rule:#25383E; --accent:#3FB3BB; --accent-soft:#14343A; --warm:#DD9152;
+    --warm-soft:#3A2A1C; --field:#0F1D22;
+  }
+  :root[data-theme="light"]{
+    --ground:#F6F8F8; --raised:#FFFFFF; --ink:#12242A; --muted:#5E7178;
+    --rule:#DCE4E5; --accent:#0F7F87; --accent-soft:#E4F0F1; --warm:#B4621C;
+    --warm-soft:#F7EBE0; --field:#FBFCFC;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--sans);
+       line-height:1.6;margin:0;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:44rem;margin:0 auto;padding:0 1.5rem 6rem}
+  .tally{position:sticky;top:0;z-index:10;background:var(--ground);
+         border-bottom:1px solid var(--rule);padding:.7rem 1.5rem;font-size:.8rem}
+  .tally-inner{max-width:44rem;margin:0 auto;width:100%;display:flex;
+               gap:1rem;align-items:center;justify-content:space-between}
+  .count{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .count b{color:var(--ink);font-weight:600}
+  .copy{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--raised);
+        color:var(--ink);padding:.35rem .8rem;border-radius:2px;cursor:pointer}
+  .copy:hover{border-color:var(--accent);color:var(--accent)}
+  header{padding:4.5rem 0 3rem;border-bottom:1px solid var(--rule);margin-bottom:3.5rem}
+  h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,5vw,2.9rem);
+     line-height:1.15;margin:0 0 1rem;text-wrap:balance;letter-spacing:-.01em}
+  .standfirst{font-family:var(--serif);font-size:1.12rem;color:var(--muted);
+              margin:0 0 1.6rem;max-width:34rem}
+  .ask{border-left:2px solid var(--accent);padding:.1rem 0 .1rem 1.1rem;
+       margin:0;font-size:.95rem;max-width:34rem}
+  .ask b{color:var(--accent)}
+  .eyebrow{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
+           color:var(--accent);margin:0 0 .5rem;font-weight:600}
+  .scenario{padding-bottom:3.5rem;margin-bottom:3.5rem;border-bottom:1px solid var(--rule)}
+  .scenario:last-of-type{border-bottom:0}
+  h2{font-family:var(--serif);font-weight:400;font-size:1.6rem;margin:0 0 1.4rem;
+     line-height:1.25;text-wrap:balance}
+  .said{font-family:var(--serif);font-size:1.15rem;font-style:italic;
+        border-left:2px solid var(--rule);margin:0 0 1.6rem;padding:.2rem 0 .2rem 1.2rem}
+  .facts{display:grid;gap:.55rem;margin:0 0 2rem;font-size:.85rem}
+  .facts>div{display:grid;grid-template-columns:9.5rem 1fr;gap:1rem}
+  dt{color:var(--muted)}
+  dd{margin:0}
+  @media (max-width:34rem){ .facts>div{grid-template-columns:1fr;gap:.1rem} }
+  .lede{font-size:.85rem;color:var(--muted);margin:0 0 1.2rem}
+  .reply{background:var(--raised);border:1px solid var(--rule);padding:1.5rem;
+         margin-bottom:1rem;transition:border-color .15s}
+  .reply[data-voted="yes"]{border-color:var(--accent)}
+  .reply[data-voted="no"]{border-color:var(--warm)}
+  .tag{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+       margin:0 0 .8rem}
+  .reply-body{font-family:var(--serif);font-size:1.06rem}
+  .reply-body p{margin:0 0 .85rem}
+  .reply-body p:last-child{margin-bottom:0}
+  .vote{display:flex;gap:.5rem;align-items:center;margin-top:1.3rem;
+        padding-top:1.1rem;border-top:1px solid var(--rule);flex-wrap:wrap}
+  .btn{font:inherit;font-size:.82rem;border:1px solid var(--rule);background:transparent;
+       color:var(--muted);padding:.4rem .9rem;border-radius:2px;cursor:pointer;
+       transition:background .15s,color .15s,border-color .15s}
+  .btn.yes:hover,.btn.yes[aria-pressed="true"]{background:var(--accent-soft);
+       border-color:var(--accent);color:var(--accent)}
+  .btn.no:hover,.btn.no[aria-pressed="true"]{background:var(--warm-soft);
+       border-color:var(--warm);color:var(--warm)}
+  .btn:focus-visible,.copy:focus-visible,textarea:focus-visible{
+       outline:2px solid var(--accent);outline-offset:2px}
+  .voted{font-size:.78rem;color:var(--muted)}
+  .say{margin-top:1.1rem;display:block;background:var(--field);
+       border-left:2px solid var(--accent);padding:.85rem 1rem}
+  .say label{display:block;font-size:.8rem;color:var(--ink);margin-bottom:.45rem;font-weight:500}
+  .say label span{color:var(--muted);font-weight:400}
+  .say textarea{display:block;font:inherit;font-size:.9rem;font-family:var(--sans);
+       width:100%;background:var(--raised);color:var(--ink);border:1px solid var(--rule);
+       border-radius:2px;padding:.6rem .7rem;resize:vertical;min-height:4rem;line-height:1.5}
+  .say textarea::placeholder{color:var(--muted);opacity:.8}
+  .say textarea:focus{border-color:var(--accent);outline-offset:0}
+  .out{margin-top:2.5rem;border:1px solid var(--accent);background:var(--raised);padding:1.2rem}
+  .out-note{margin:0 0 .7rem;font-size:.85rem;color:var(--accent)}
+  .out textarea{display:block;width:100%;font-family:var(--mono);font-size:.78rem;
+       line-height:1.6;background:var(--field);color:var(--ink);
+       border:1px solid var(--rule);border-radius:2px;padding:.8rem;resize:vertical}
+  footer{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--rule);
+         font-size:.85rem;color:var(--muted)}
+  footer h3{font-family:var(--serif);font-weight:400;font-size:1.15rem;color:var(--ink);margin:0 0 .7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="tally">
+  <div class="tally-inner">
+    <span class="count"><b id="done">0</b> of __TOTAL__ rated &middot; <b id="yes">0</b> yes &middot; <b id="no">0</b> no &middot; <b id="notes">0</b> notes</span>
+    <button class="copy" id="copy">Copy my answers</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>Does this sound like Emerson?</h1>
+    <p class="standfirst">__TOTAL__ replies our concierge wrote to __QUESTIONS__ customer questions. Nothing edited, nothing cherry-picked.</p>
+    <p class="ask">One question for each: <b>would you be happy for a customer to receive this?</b> Ignore typos and length, we are asking about voice. If you can say <em>why</em> in a few words, that is worth more than the vote.</p>
+  </header>
+"""
+
+FOOT = """  <div class="out" id="out" hidden>
+    <p class="out-note" id="out-note"></p>
+    <textarea id="out-text" rows="14" readonly aria-label="Your answers as text"></textarea>
+  </div>
+
+  <footer>
+    <h3>What happens with your answers</h3>
+    <p>Every reply you turn down becomes a training example, and your note tells us which part was wrong. "Sounds like an advert" and "too stiff" teach completely different things, so a few words beat a thumbs down on its own.</p>
+    <p style="margin-top:1rem">Being harsh here is far more useful than being kind.</p>
+    <p style="margin-top:1rem">Saved in this browser only. Use <em>Copy my answers</em> to send them back.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var KEY = 'emerson-blind-review';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { state = {}; }
+
+  function entry(id){ if (!state[id]) { state[id] = {}; } return state[id]; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  function refresh(){
+    var rated = 0, yes = 0, no = 0, notes = 0;
+    Object.keys(state).forEach(function(k){
+      var e = state[k];
+      if (e.vote) { rated++; if (e.vote === 'yes') { yes++; } else { no++; } }
+      if (e.note && e.note.trim()) { notes++; }
+    });
+    document.getElementById('done').textContent = rated;
+    document.getElementById('yes').textContent = yes;
+    document.getElementById('no').textContent = no;
+    document.getElementById('notes').textContent = notes;
+  }
+
+  document.querySelectorAll('.reply').forEach(function(card){
+    var id = card.dataset.id;
+    var label = card.querySelector('.voted');
+    var field = card.querySelector('textarea');
+
+    function paint(){
+      var v = entry(id).vote;
+      card.dataset.voted = v || '';
+      card.querySelectorAll('.btn').forEach(function(b){
+        b.setAttribute('aria-pressed', String(b.dataset.vote === v));
+      });
+      label.textContent = v ? 'Saved' : '';
+    }
+
+    card.querySelectorAll('.btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var v = btn.dataset.vote, e = entry(id);
+        if (e.vote === v) { delete e.vote; } else { e.vote = v; }
+        save(); paint(); refresh();
+        if (e.vote && !field.value) { field.focus(); }
+      });
+    });
+
+    field.value = entry(id).note || '';
+    field.addEventListener('input', function(){
+      entry(id).note = field.value; save(); refresh();
+    });
+
+    paint();
+  });
+  refresh();
+
+  document.getElementById('copy').addEventListener('click', function(){
+    var lines = ['Emerson reply review', ''];
+    document.querySelectorAll('.reply').forEach(function(card){
+      var e = state[card.dataset.id] || {};
+      var word = e.vote === 'yes' ? 'sounds like us'
+               : e.vote === 'no' ? 'does not sound like us'
+               : 'not rated';
+      lines.push(card.dataset.id + ': ' + word);
+      if (e.note && e.note.trim()) {
+        lines.push('    note: ' + e.note.trim().replace(/\\s+/g, ' '));
+      }
+    });
+    var text = lines.join('\\n');
+
+    // Sandboxed page: navigator.clipboard is usually blocked, and window.prompt
+    // with it, so both a copy and its fallback fail silently. Put the text on the
+    // page and select it instead. Ctrl+C then always works.
+    var out = document.getElementById('out');
+    var box = document.getElementById('out-text');
+    box.value = text; out.hidden = false; box.focus(); box.select();
+    out.scrollIntoView({ block: 'nearest' });
+
+    var note = document.getElementById('out-note');
+    note.textContent = 'Selected below. Press Ctrl+C (or Cmd+C) to copy.';
+    var btn = this;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        note.textContent = 'Copied to your clipboard. The text is below as well.';
+        btn.textContent = 'Copied';
+        setTimeout(function(){ btn.textContent = 'Copy my answers'; }, 1600);
+      }, function(){});
+    }
+  });
+})();
+</script>"""

@@ -1,0 +1,349 @@
+[
+  {
+    "label": "01 Dubai humidity frizz",
+    "expected": "climate_control_first",
+    "got": "climate_control_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "02 UAE summer curl definition collapse",
+    "expected": "climate_control_first",
+    "got": "climate_control_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "03 Itchy flaky scalp",
+    "expected": "scalp_calm_first",
+    "got": "scalp_calm_first",
+    "signals": [
+      "scalp_sensitivity"
+    ],
+    "mode": "reassure",
+    "depth": "medium",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "04 Hair snapping breakage",
+    "expected": "repair_first",
+    "got": "repair_first",
+    "signals": [
+      "breakage_active"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "05 Curls lose definition fast (low humidity)",
+    "expected": "hold_and_definition_first",
+    "got": "hold_and_definition_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "medium",
+    "tone": "expert_calm",
+    "pass": true
+  },
+  {
+    "label": "06 Overwhelmed by products",
+    "expected": "simplify_and_reduce_friction",
+    "got": "reset_first",
+    "signals": [
+      "absorption_blocked"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": false
+  },
+  {
+    "label": "07 New to curly hair routine",
+    "expected": "balanced_routine_first",
+    "got": "simplify_and_reduce_friction",
+    "signals": [],
+    "mode": "reassure",
+    "depth": "short",
+    "tone": "simplified_supportive",
+    "pass": false
+  },
+  {
+    "label": "08 UAE summer frizz immediately",
+    "expected": "climate_control_first",
+    "got": "climate_control_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "09 Routine working great reinforce",
+    "expected": "reinforce_current_routine",
+    "got": "reinforce_current_routine",
+    "signals": [],
+    "mode": "reassure",
+    "depth": "medium",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "10 Child with sensitive scalp",
+    "expected": "scalp_calm_first",
+    "got": "scalp_calm_first",
+    "signals": [
+      "scalp_sensitivity"
+    ],
+    "mode": "reassure",
+    "depth": "medium",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "11 Styles not lasting hold loss (low humidity)",
+    "expected": "hold_and_definition_first",
+    "got": "hold_and_definition_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "medium",
+    "tone": "expert_calm",
+    "pass": true
+  },
+  {
+    "label": "12 Shedding weak brittle hair",
+    "expected": "repair_first",
+    "got": "repair_first",
+    "signals": [
+      "breakage_active"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "13 Products sitting on top absorption",
+    "expected": "reset_first",
+    "got": "reset_first",
+    "signals": [
+      "absorption_blocked"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "14 Waxy coated hair",
+    "expected": "reset_first",
+    "got": "reset_first",
+    "signals": [
+      "coated_feel"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "15 Scalp heavy products stopped working",
+    "expected": "reset_first",
+    "got": "reset_first",
+    "signals": [
+      "absorption_blocked",
+      "buildup_present"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "16 High porosity high humidity",
+    "expected": "climate_control_first",
+    "got": "climate_control_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "17 Post-purchase how to use",
+    "expected": "balanced_routine_first",
+    "got": "balanced_routine_first",
+    "signals": [],
+    "mode": "educate",
+    "depth": "medium",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "18 No definition after day 1 (low humidity)",
+    "expected": "hold_and_definition_first",
+    "got": "hold_and_definition_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "medium",
+    "tone": "expert_calm",
+    "pass": true
+  },
+  {
+    "label": "19 Hard water dull dry hair",
+    "expected": "reset_first",
+    "got": "reset_first",
+    "signals": [
+      "absorption_blocked"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "20 AC drying hair silently",
+    "expected": "climate_control_first",
+    "got": "climate_control_first",
+    "signals": [],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "21 Too many routine steps friction",
+    "expected": "simplify_and_reduce_friction",
+    "got": "simplify_and_reduce_friction",
+    "signals": [],
+    "mode": "reassure",
+    "depth": "short",
+    "tone": "simplified_supportive",
+    "pass": true
+  },
+  {
+    "label": "22 Crunch-free curls in heat",
+    "expected": "climate_control_first",
+    "got": "climate_control_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "expert_calm",
+    "pass": true
+  },
+  {
+    "label": "23 Scalp irritated after styling",
+    "expected": "scalp_calm_first",
+    "got": "scalp_calm_first",
+    "signals": [
+      "scalp_sensitivity"
+    ],
+    "mode": "reassure",
+    "depth": "medium",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "24 Hair not growing breaking",
+    "expected": "repair_first",
+    "got": "repair_first",
+    "signals": [
+      "breakage_active"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "25 Want simple routine",
+    "expected": "simplify_and_reduce_friction",
+    "got": "simplify_and_reduce_friction",
+    "signals": [],
+    "mode": "reassure",
+    "depth": "short",
+    "tone": "simplified_supportive",
+    "pass": true
+  },
+  {
+    "label": "26 Scalp itching after braiding",
+    "expected": "scalp_calm_first",
+    "got": "scalp_calm_first",
+    "signals": [
+      "scalp_sensitivity"
+    ],
+    "mode": "reassure",
+    "depth": "medium",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "27 4C moisture retention general",
+    "expected": "balanced_routine_first",
+    "got": "reset_first",
+    "signals": [
+      "absorption_blocked"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": false
+  },
+  {
+    "label": "28 High porosity UAE summer constant frizz",
+    "expected": "climate_control_first",
+    "got": "climate_control_first",
+    "signals": [
+      "hold_loss"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "29 Ends dry splitting breakage",
+    "expected": "repair_first",
+    "got": "repair_first",
+    "signals": [
+      "breakage_active"
+    ],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "warm_reassuring",
+    "pass": true
+  },
+  {
+    "label": "30 Not sure if need protein",
+    "expected": "balanced_routine_first",
+    "got": "balanced_routine_first",
+    "signals": [],
+    "mode": "educate",
+    "depth": "long",
+    "tone": "expert_calm",
+    "pass": true
+  }
+]

@@ -39,7 +39,7 @@ Output ONLY matching traits in JSON. For any trait not mentioned, set to null.
 Example: {"texture": "Fine", "density": null, "moisture_behaviour": null, "humidity_response": null, "hair_goals": ["Volume"]}
 """
 
-    def __init__(self, model: str = "gemini-2.5-flash-lite"):
+    def __init__(self, model: str = "gemini-3.5-flash-lite"):
         self.model = model
 
     async def extract_traits(self, message: str) -> Dict:
@@ -103,7 +103,7 @@ Output ONLY a JSON list of objects: [{"intent": "LABEL", "query": "sub-query for
 No preamble or explanation.
 """
 
-    def __init__(self, model: str = "gemini-2.5-flash-lite"):
+    def __init__(self, model: str = "gemini-3.5-flash-lite"):
         self.model = model
         self.observer = ProfileObserver(model=model)
 

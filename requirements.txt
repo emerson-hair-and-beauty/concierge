@@ -20,5 +20,13 @@ pinecone
 # Supabase client for database operations
 supabase
 
+# Used directly by enrichment/klaviyo.py. It already arrives with openai and
+# supabase, but a package that calls it must declare it.
+httpx
+
 # Web Push notifications
 pywebpush
+
+# Per-brand tone guardrails for LLM responses and blog-text extraction.
+# 0.3.0 is the floor: pick_best / train_from_labeled do not exist in 0.2.x.
+simasia[urls]==0.3.0

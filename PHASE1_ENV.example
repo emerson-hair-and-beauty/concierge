@@ -1,0 +1,26 @@
+# Configure these in Render or app/.env. Never commit real credentials.
+PLAN_MODE=mock
+CORS_ALLOWED_ORIGINS=https://your-store.myshopify.com
+
+# Required for persistent operation (PLAN_MODE=live).
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=
+CATALOG_INGEST_TOKEN=
+LLM_PROVIDER=openai
+OPENAI_API_KEY=
+PINECONE_API_KEY=
+PINECONE_HOST=
+PINECONE_NAMESPACE=
+KLAVIYO_API_KEY=
+KLAVIYO_REVISION=2026-07-15
+# Supplier page URL, not the backend GET endpoint. Host and path are configurable.
+PLAN_PUBLIC_URL_TEMPLATE=https://your-store.example/plan/{plan_id}
+SHOPIFY_STORE_URL=https://your-store.example
+SHOPIFY_WEBHOOK_SECRET=
+
+# Optional climate lookup and brand-approved replacement fallback copy.
+WEATHER_API_KEY=
+PLAN_FALLBACK_COPY_PATH=
+
+# Only needed when using app.main instead of app.phase1_main.
+PHASE1_ENABLED=true

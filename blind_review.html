@@ -1,0 +1,464 @@
+<title>Emerson concierge &mdash; reply review</title>
+<style>
+  :root{
+    --ground:#F6F8F8; --raised:#FFFFFF; --ink:#12242A; --muted:#5E7178;
+    --rule:#DCE4E5; --accent:#0F7F87; --accent-soft:#E4F0F1; --warm:#B4621C;
+    --warm-soft:#F7EBE0; --field:#FBFCFC;
+    --serif: Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;
+    --sans: system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --ground:#0D181C; --raised:#132227; --ink:#E4EDEF; --muted:#93A7AE;
+           --rule:#25383E; --accent:#3FB3BB; --accent-soft:#14343A; --warm:#DD9152;
+           --warm-soft:#3A2A1C; --field:#0F1D22; }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0D181C; --raised:#132227; --ink:#E4EDEF; --muted:#93A7AE;
+    --rule:#25383E; --accent:#3FB3BB; --accent-soft:#14343A; --warm:#DD9152;
+    --warm-soft:#3A2A1C; --field:#0F1D22;
+  }
+  :root[data-theme="light"]{
+    --ground:#F6F8F8; --raised:#FFFFFF; --ink:#12242A; --muted:#5E7178;
+    --rule:#DCE4E5; --accent:#0F7F87; --accent-soft:#E4F0F1; --warm:#B4621C;
+    --warm-soft:#F7EBE0; --field:#FBFCFC;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--sans);
+       line-height:1.6;margin:0;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:44rem;margin:0 auto;padding:0 1.5rem 6rem}
+  .tally{position:sticky;top:0;z-index:10;background:var(--ground);
+         border-bottom:1px solid var(--rule);padding:.7rem 1.5rem;font-size:.8rem}
+  .tally-inner{max-width:44rem;margin:0 auto;width:100%;display:flex;
+               gap:1rem;align-items:center;justify-content:space-between}
+  .count{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .count b{color:var(--ink);font-weight:600}
+  .copy{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--raised);
+        color:var(--ink);padding:.35rem .8rem;border-radius:2px;cursor:pointer}
+  .copy:hover{border-color:var(--accent);color:var(--accent)}
+  header{padding:4.5rem 0 3rem;border-bottom:1px solid var(--rule);margin-bottom:3.5rem}
+  h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,5vw,2.9rem);
+     line-height:1.15;margin:0 0 1rem;text-wrap:balance;letter-spacing:-.01em}
+  .standfirst{font-family:var(--serif);font-size:1.12rem;color:var(--muted);
+              margin:0 0 1.6rem;max-width:34rem}
+  .ask{border-left:2px solid var(--accent);padding:.1rem 0 .1rem 1.1rem;
+       margin:0;font-size:.95rem;max-width:34rem}
+  .ask b{color:var(--accent)}
+  .eyebrow{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
+           color:var(--accent);margin:0 0 .5rem;font-weight:600}
+  .scenario{padding-bottom:3.5rem;margin-bottom:3.5rem;border-bottom:1px solid var(--rule)}
+  .scenario:last-of-type{border-bottom:0}
+  h2{font-family:var(--serif);font-weight:400;font-size:1.6rem;margin:0 0 1.4rem;
+     line-height:1.25;text-wrap:balance}
+  .said{font-family:var(--serif);font-size:1.15rem;font-style:italic;
+        border-left:2px solid var(--rule);margin:0 0 1.6rem;padding:.2rem 0 .2rem 1.2rem}
+  .facts{display:grid;gap:.55rem;margin:0 0 2rem;font-size:.85rem}
+  .facts>div{display:grid;grid-template-columns:9.5rem 1fr;gap:1rem}
+  dt{color:var(--muted)}
+  dd{margin:0}
+  @media (max-width:34rem){ .facts>div{grid-template-columns:1fr;gap:.1rem} }
+  .lede{font-size:.85rem;color:var(--muted);margin:0 0 1.2rem}
+  .reply{background:var(--raised);border:1px solid var(--rule);padding:1.5rem;
+         margin-bottom:1rem;transition:border-color .15s}
+  .reply[data-voted="yes"]{border-color:var(--accent)}
+  .reply[data-voted="no"]{border-color:var(--warm)}
+  .tag{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+       margin:0 0 .8rem}
+  .reply-body{font-family:var(--serif);font-size:1.06rem}
+  .reply-body p{margin:0 0 .85rem}
+  .reply-body p:last-child{margin-bottom:0}
+  .vote{display:flex;gap:.5rem;align-items:center;margin-top:1.3rem;
+        padding-top:1.1rem;border-top:1px solid var(--rule);flex-wrap:wrap}
+  .btn{font:inherit;font-size:.82rem;border:1px solid var(--rule);background:transparent;
+       color:var(--muted);padding:.4rem .9rem;border-radius:2px;cursor:pointer;
+       transition:background .15s,color .15s,border-color .15s}
+  .btn.yes:hover,.btn.yes[aria-pressed="true"]{background:var(--accent-soft);
+       border-color:var(--accent);color:var(--accent)}
+  .btn.no:hover,.btn.no[aria-pressed="true"]{background:var(--warm-soft);
+       border-color:var(--warm);color:var(--warm)}
+  .btn:focus-visible,.copy:focus-visible,textarea:focus-visible{
+       outline:2px solid var(--accent);outline-offset:2px}
+  .voted{font-size:.78rem;color:var(--muted)}
+  .say{margin-top:1.1rem;display:block;background:var(--field);
+       border-left:2px solid var(--accent);padding:.85rem 1rem}
+  .say label{display:block;font-size:.8rem;color:var(--ink);margin-bottom:.45rem;font-weight:500}
+  .say label span{color:var(--muted);font-weight:400}
+  .say textarea{display:block;font:inherit;font-size:.9rem;font-family:var(--sans);
+       width:100%;background:var(--raised);color:var(--ink);border:1px solid var(--rule);
+       border-radius:2px;padding:.6rem .7rem;resize:vertical;min-height:4rem;line-height:1.5}
+  .say textarea::placeholder{color:var(--muted);opacity:.8}
+  .say textarea:focus{border-color:var(--accent);outline-offset:0}
+  .out{margin-top:2.5rem;border:1px solid var(--accent);background:var(--raised);padding:1.2rem}
+  .out-note{margin:0 0 .7rem;font-size:.85rem;color:var(--accent)}
+  .out textarea{display:block;width:100%;font-family:var(--mono);font-size:.78rem;
+       line-height:1.6;background:var(--field);color:var(--ink);
+       border:1px solid var(--rule);border-radius:2px;padding:.8rem;resize:vertical}
+  footer{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--rule);
+         font-size:.85rem;color:var(--muted)}
+  footer h3{font-family:var(--serif);font-weight:400;font-size:1.15rem;color:var(--ink);margin:0 0 .7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="tally">
+  <div class="tally-inner">
+    <span class="count"><b id="done">0</b> of 16 rated &middot; <b id="yes">0</b> yes &middot; <b id="no">0</b> no &middot; <b id="notes">0</b> notes</span>
+    <button class="copy" id="copy">Copy my answers</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>Does this sound like Emerson?</h1>
+    <p class="standfirst">16 replies our concierge wrote to 4 customer questions. Nothing edited, nothing cherry-picked.</p>
+    <p class="ask">One question for each: <b>would you be happy for a customer to receive this?</b> Ignore typos and length, we are asking about voice. If you can say <em>why</em> in a few words, that is worth more than the vote.</p>
+  </header>
+
+      <section class="scenario">
+        <p class="eyebrow">Question 1 of 4</p>
+        <h2>Ready to give up</h2>
+        <blockquote class="said">ive tried everything and nothing works, im honestly ready to just cut it all off</blockquote>
+        <dl class="facts">
+          <div><dt>What we decided</dt><dd>She is overwhelmed. Give her one thing to do, not a routine.</dd></div>
+        </dl>
+        <p class="lede">4 different answers to the same question. Judge each on its own.</p>
+        
+        <article class="reply" data-id="r1">
+          <p class="tag">Answer 1 of 4</p>
+          <div class="reply-body"><p>Your curls are resisting every routine because high porosity hair in our humidity grabs water and frizzes, then loses definition as moisture escapes. Strip your routine back to the basics—just a gentle cleanse and a single styler with hold—so you can see what your hair actually does on its own.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r1">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r1" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r2">
+          <p class="tag">Answer 2 of 4</p>
+          <div class="reply-body"><p>You’re running into resistance because high porosity curls in our climate grab water fast but lose it just as quickly, which leaves you with that cycle of dryness and frizz. Strip your routine right back—just cleanse, then seal in moisture with a leave-in, nothing else for now. Give this a week and let your hair recalibrate.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r2">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r2" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r3">
+          <p class="tag">Answer 3 of 4</p>
+          <div class="reply-body"><p>You’ve pushed through more than most would, and that tells me your hair isn’t the problem—your routine is just fighting against your high porosity. Strip it back to one gentle cleanse this week and let your curls breathe, no extras or layering.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r3">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r3" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r4">
+          <p class="tag">Answer 4 of 4</p>
+          <div class="reply-body"><p>When nothing sticks, it’s because high porosity curls lose moisture as fast as they take it in. Strip your routine back to just gentle cleansing and sealing, no extra layers—let your hair reset and catch its breath.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r4">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r4" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+      </section>
+      <section class="scenario">
+        <p class="eyebrow">Question 2 of 4</p>
+        <h2>Hair feels heavy and dull</h2>
+        <blockquote class="said">everything i put on my hair feels like it just sits there and my curls feel heavy and dull</blockquote>
+        <dl class="facts">
+          <div><dt>What we decided</dt><dd>Something is coating her hair and blocking absorption. Clear that first.</dd></div>
+        </dl>
+        <p class="lede">4 different answers to the same question. Judge each on its own.</p>
+        
+        <article class="reply" data-id="r5">
+          <p class="tag">Answer 1 of 4</p>
+          <div class="reply-body"><p>Your products are coating your hair instead of absorbing, which is why everything feels heavy and lacks life. This always traces back to buildup—either from old product, natural oils, or minerals left behind by hard water. Before you reach for anything richer or heavier, you need a deep cleanse to clear that residue and let your curls breathe. Start with a clarifying or chelating wash. After that reset, watch how your hair responds to your usual routine—true absorption will show up as lighter, springier curls.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r5">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r5" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r6">
+          <p class="tag">Answer 2 of 4</p>
+          <div class="reply-body"><p>Your products are sitting on the surface because a film is blocking absorption. This always comes from residue: old product, scalp oils, or minerals from the UAE’s hard water. Until you clear that layer with a clarifying or chelating wash, anything you apply will stay on top and weigh your curls down. Start with a reset wash to remove buildup. After that, watch how your hair absorbs product—true moisture and definition only return once the cuticle can take in what you apply.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r6">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r6" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r7">
+          <p class="tag">Answer 3 of 4</p>
+          <div class="reply-body"><p>Your hair feels weighed down and dull because there is a coating over your curls. This buildup comes from leftover product, natural oils, or minerals in Dubai’s hard water. Until you remove that layer with a deep cleanse—think clarifying or chelating—nothing new you apply will absorb or revive your definition. Start with a reset wash, then notice how your hair responds before adding anything else. Watch for lighter, cleaner curl movement; if you don’t get it, the residue is still blocking absorption.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r7">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r7" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r8">
+          <p class="tag">Answer 4 of 4</p>
+          <div class="reply-body"><p>Your products are sitting on top because your cuticle is coated in residue—either leftover stylers, natural oils, or minerals from hard UAE water. This barrier blocks anything new from reaching your hair’s core, so you end up with dull, heavy curls no matter what you apply. To break this cycle, start with a deep cleanse that strips all layers back to your true texture. After that, notice how your hair absorbs product—if it suddenly drinks it in, you’ve cleared the blockage. If not, there’s another factor at play and it will show up after the reset.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r8">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r8" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+      </section>
+      <section class="scenario">
+        <p class="eyebrow">Question 3 of 4</p>
+        <h2>Definition gone by lunchtime</h2>
+        <blockquote class="said">my definition is gone by lunchtime every day here in Dubai</blockquote>
+        <dl class="facts">
+          <div><dt>What we decided</dt><dd>The Gulf climate is the cause. Seal against humidity rather than adding moisture.</dd></div>
+        </dl>
+        <p class="lede">4 different answers to the same question. Judge each on its own.</p>
+        
+        <article class="reply" data-id="r9">
+          <p class="tag">Answer 1 of 4</p>
+          <div class="reply-body"><p>Your curl definition drops by midday because Dubai’s humidity swells your cuticle and lifts your pattern apart. This is the classic climate response: even when your application is right, moisture in the air disrupts your results. The answer isn’t more hydration, but locking out excess moisture with anti-humectant stylers and sealing products. Glycerin-heavy formulas pull in too much water here, so switch to glycerin-free options that create a barrier instead. This approach blocks the climate’s interference and holds your shape longer than any moisture-based fix.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r9">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r9" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r10">
+          <p class="tag">Answer 2 of 4</p>
+          <div class="reply-body"><p>Dubai’s humidity is pulling your curl pattern apart by midday. When moisture in the air hits high-porosity hair, the cuticle swells and your definition lifts away, leaving frizz and drop-out. The answer isn’t more hydration—it’s blocking excess moisture with an anti-humectant layer and sealing in your style with a finishing product that stops that pattern from shifting. Glycerin-heavy formulas work against you here, so shift to stylers that keep humidity out rather than drawing it in. This approach wins in the GCC because here, the climate—not your technique or moisture levels—is the direct cause of your midday definition loss.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r10">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r10" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r11">
+          <p class="tag">Answer 3 of 4</p>
+          <div class="reply-body"><p>Your definition is dropping because Dubai’s humidity is swelling your cuticle and lifting your curl pattern apart by midday. In this climate, moisture in the air pushes past your hair’s natural barrier, so frizz wins out over hold. You need a finishing approach built around anti-humectant ingredients and a sealing step that locks your definition in place. This strategy keeps the weather out, which is what matters here—more moisture or softer creams will only accelerate the collapse. Glycerin-heavy stylers are working against you; swap them for climate-control formulas that block humidity instead of pulling it in.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r11">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r11" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r12">
+          <p class="tag">Answer 4 of 4</p>
+          <div class="reply-body"><p>Dubai’s humidity is disrupting your curl pattern by noon because it swells the cuticle and forces the curls apart. This is not a moisture shortage. It’s the climate interfering with your definition and pulling moisture into the hair shaft until it loses shape. You need a routine built around blocking that moisture out—glycerin-free stylers and a sealing finish. This works here because it shuts out the main cause of midday frizz, instead of layering on more hydration that the climate will undo before the day is out.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r12">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r12" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+      </section>
+      <section class="scenario">
+        <p class="eyebrow">Question 4 of 4</p>
+        <h2>Products stopped absorbing</h2>
+        <blockquote class="said">my curls have gone limp and my leave-in just sits on top of my hair now</blockquote>
+        <dl class="facts">
+          <div><dt>What we decided</dt><dd>Something is coating her hair and blocking absorption. Clear that first.</dd></div>
+        </dl>
+        <p class="lede">4 different answers to the same question. Judge each on its own.</p>
+        
+        <article class="reply" data-id="r13">
+          <p class="tag">Answer 1 of 4</p>
+          <div class="reply-body"><p>Your leave-in is sitting on the surface because something is blocking your curls from absorbing anything new. This always comes back to residue—either leftover product, natural oils, or hard water minerals forming a layer over the cuticle. Before you adjust your routine or reach for different products, start with a full reset: a thorough clarifying or chelating wash strips away what’s built up and restores your hair’s ability to take in moisture. Watch how your hair behaves after the reset; if your leave-in starts to absorb again, you’ve cleared the main obstacle.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r13">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r13" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r14">
+          <p class="tag">Answer 2 of 4</p>
+          <div class="reply-body"><p>Your leave-in is just sitting on your hair because a layer of residue is blocking absorption. This happens when product buildup, sebum, or minerals from hard water coat your cuticle, especially with low porosity curls like yours. No conditioner or styling product will absorb until you remove that layer. Start with a clarifying or chelating wash to reset your hair’s surface. Afterward, monitor how your leave-in absorbs—true absorption returns when the cuticle is clear.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r14">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r14" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r15">
+          <p class="tag">Answer 3 of 4</p>
+          <div class="reply-body"><p>Your leave-in is sitting on your hair because there is a layer blocking it—usually product, natural oils, or minerals from hard water. That barrier has sealed over your cuticle and stopped anything new from getting in, so your curls go limp and nothing absorbs. This is not about dryness or needing richer formulas; it is an absorption problem, and it always starts with buildup. Right now, the only way forward is a clarifying or chelating wash to clear that layer completely. After the reset, watch how your hair responds—true absorption comes back immediately if the buildup was the cause.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r15">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r15" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r16">
+          <p class="tag">Answer 4 of 4</p>
+          <div class="reply-body"><p>Your leave-in is sitting on the surface because there is a coating blocking absorption. This is classic when residue builds up—from product layering, natural scalp oils, or minerals from hard tap water in the UAE. Until you clear this layer with a deep cleanse, anything you apply will stay on top and limpness will persist. Start with a clarifying or chelating wash to remove the buildup. After the reset, watch how your hair responds to moisture—absorption and definition should return if buildup was the root cause.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r16">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r16" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+      </section>  <div class="out" id="out" hidden>
+    <p class="out-note" id="out-note"></p>
+    <textarea id="out-text" rows="14" readonly aria-label="Your answers as text"></textarea>
+  </div>
+
+  <footer>
+    <h3>What happens with your answers</h3>
+    <p>Every reply you turn down becomes a training example, and your note tells us which part was wrong. "Sounds like an advert" and "too stiff" teach completely different things, so a few words beat a thumbs down on its own.</p>
+    <p style="margin-top:1rem">Being harsh here is far more useful than being kind.</p>
+    <p style="margin-top:1rem">Saved in this browser only. Use <em>Copy my answers</em> to send them back.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var KEY = 'emerson-blind-review';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { state = {}; }
+
+  function entry(id){ if (!state[id]) { state[id] = {}; } return state[id]; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  function refresh(){
+    var rated = 0, yes = 0, no = 0, notes = 0;
+    Object.keys(state).forEach(function(k){
+      var e = state[k];
+      if (e.vote) { rated++; if (e.vote === 'yes') { yes++; } else { no++; } }
+      if (e.note && e.note.trim()) { notes++; }
+    });
+    document.getElementById('done').textContent = rated;
+    document.getElementById('yes').textContent = yes;
+    document.getElementById('no').textContent = no;
+    document.getElementById('notes').textContent = notes;
+  }
+
+  document.querySelectorAll('.reply').forEach(function(card){
+    var id = card.dataset.id;
+    var label = card.querySelector('.voted');
+    var field = card.querySelector('textarea');
+
+    function paint(){
+      var v = entry(id).vote;
+      card.dataset.voted = v || '';
+      card.querySelectorAll('.btn').forEach(function(b){
+        b.setAttribute('aria-pressed', String(b.dataset.vote === v));
+      });
+      label.textContent = v ? 'Saved' : '';
+    }
+
+    card.querySelectorAll('.btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var v = btn.dataset.vote, e = entry(id);
+        if (e.vote === v) { delete e.vote; } else { e.vote = v; }
+        save(); paint(); refresh();
+        if (e.vote && !field.value) { field.focus(); }
+      });
+    });
+
+    field.value = entry(id).note || '';
+    field.addEventListener('input', function(){
+      entry(id).note = field.value; save(); refresh();
+    });
+
+    paint();
+  });
+  refresh();
+
+  document.getElementById('copy').addEventListener('click', function(){
+    var lines = ['Emerson reply review', ''];
+    document.querySelectorAll('.reply').forEach(function(card){
+      var e = state[card.dataset.id] || {};
+      var word = e.vote === 'yes' ? 'sounds like us'
+               : e.vote === 'no' ? 'does not sound like us'
+               : 'not rated';
+      lines.push(card.dataset.id + ': ' + word);
+      if (e.note && e.note.trim()) {
+        lines.push('    note: ' + e.note.trim().replace(/\s+/g, ' '));
+      }
+    });
+    var text = lines.join('\n');
+
+    // Sandboxed page: navigator.clipboard is usually blocked, and window.prompt
+    // with it, so both a copy and its fallback fail silently. Put the text on the
+    // page and select it instead. Ctrl+C then always works.
+    var out = document.getElementById('out');
+    var box = document.getElementById('out-text');
+    box.value = text; out.hidden = false; box.focus(); box.select();
+    out.scrollIntoView({ block: 'nearest' });
+
+    var note = document.getElementById('out-note');
+    note.textContent = 'Selected below. Press Ctrl+C (or Cmd+C) to copy.';
+    var btn = this;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        note.textContent = 'Copied to your clipboard. The text is below as well.';
+        btn.textContent = 'Copied';
+        setTimeout(function(){ btn.textContent = 'Copy my answers'; }, 1600);
+      }, function(){});
+    }
+  });
+})();
+</script>

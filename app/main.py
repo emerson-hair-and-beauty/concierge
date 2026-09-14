@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import os
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.search import router as search_router
@@ -14,8 +15,8 @@ app = FastAPI(title="Concierge API")
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
-    allow_credentials=True,
+    allow_origins=[origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -29,6 +30,9 @@ app.include_router(scenarios_router, prefix="/api/scenarios")
 app.include_router(user_router, prefix="/api/user")
 app.include_router(recommendations_router, prefix="/api")
 app.include_router(web_chat_router, prefix="/api/web")
+
+from app.services.plans.runtime import install as install_plans
+install_plans(app, enabled=os.getenv("PHASE1_ENABLED", "false").lower() == "true")
 
 @app.get("/")
 async def root():

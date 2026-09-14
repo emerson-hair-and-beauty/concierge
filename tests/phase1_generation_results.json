@@ -1,0 +1,109 @@
+{
+  "scope": "Live models and search; empty catalog; no persistence or email",
+  "results": [
+    {
+      "case": 1,
+      "status": "ready",
+      "seconds": 11.575,
+      "steps": [
+        "cleanse",
+        "condition",
+        "moisturise",
+        "style"
+      ]
+    },
+    {
+      "case": 2,
+      "status": "ready",
+      "seconds": 11.683,
+      "steps": [
+        "gentle_cleanse",
+        "protein_treatment",
+        "moisture_seal"
+      ]
+    },
+    {
+      "case": 3,
+      "status": "ready",
+      "seconds": 12.612,
+      "steps": [
+        "cleanse",
+        "condition",
+        "gel_or_cast",
+        "seal"
+      ]
+    },
+    {
+      "case": 4,
+      "status": "ready",
+      "seconds": 9.933,
+      "steps": [
+        "clarify",
+        "condition",
+        "light_styler"
+      ]
+    },
+    {
+      "case": 5,
+      "status": "ready",
+      "seconds": 9.999,
+      "steps": [
+        "gentle_cleanse",
+        "scalp_treatment",
+        "light_condition"
+      ]
+    },
+    {
+      "case": 6,
+      "status": "ready",
+      "seconds": 8.465,
+      "steps": [
+        "cleanse",
+        "condition",
+        "moisturise",
+        "style"
+      ]
+    },
+    {
+      "case": 7,
+      "status": "ready",
+      "seconds": 8.93,
+      "steps": [
+        "gentle_cleanse",
+        "protein_treatment",
+        "moisture_seal"
+      ]
+    },
+    {
+      "case": 8,
+      "status": "ready",
+      "seconds": 10.304,
+      "steps": [
+        "cleanse",
+        "condition",
+        "gel_or_cast",
+        "seal"
+      ]
+    },
+    {
+      "case": 9,
+      "status": "ready",
+      "seconds": 10.34,
+      "steps": [
+        "clarify",
+        "condition",
+        "light_styler"
+      ]
+    },
+    {
+      "case": 10,
+      "status": "ready",
+      "seconds": 8.952,
+      "steps": [
+        "gentle_cleanse",
+        "scalp_treatment",
+        "light_condition"
+      ]
+    }
+  ]
+}

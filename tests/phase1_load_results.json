@@ -1,0 +1,15 @@
+{
+  "scope": "Loopback HTTP, delayed generation, in-memory storage; not production load",
+  "results": [
+    {
+      "concurrent_submissions": 8,
+      "max_submit_ms": 26.23,
+      "max_poll_ms": 19.74
+    },
+    {
+      "concurrent_submissions": 25,
+      "max_submit_ms": 40.66,
+      "max_poll_ms": 39.88
+    }
+  ]
+}

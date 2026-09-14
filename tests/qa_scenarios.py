@@ -13,8 +13,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.services.decision_state.models import (
-    ProfileState, EnvironmentalContext, SessionSignal,
-    ResponseComposerInput,
+    SessionSignal, ResponseComposerInput,
 )
 from app.services.session_signal.signal_detector import detect_signals, SIGNAL_NAMES
 from app.services.decision_state.decision_engine import build_strategy_payload
@@ -22,36 +21,12 @@ from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.session_intent.session_intent_service import process_session_intent
 from app.services.decision_state.response_composer import compose_response
 
-# ---------------------------------------------------------------------------
-# Profiles
-# ---------------------------------------------------------------------------
-
-P4B = ProfileState(
-    texture_type="4B", texture_label="Dense Coils",
-    porosity="high", density="high", elasticity="low",
-    humidity_response="high sensitivity",
-    routine_flags=["seal_moisture", "frizz_control"],
+# Profiles and environments live in tests/routing_cases.py, so this suite and the
+# offline routing suite cannot drift apart. Two copies of P4B is how a scenario
+# ends up passing here and failing there for reasons nobody can see.
+from tests.routing_cases import (  # noqa: E402
+    ENV_GCC, ENV_HW, ENV_LOW, P3C, P4A, P4B,
 )
-P3C = ProfileState(
-    texture_type="3C", texture_label="Tight Curls",
-    porosity="low", density="medium", elasticity="normal",
-    humidity_response="moderate sensitivity",
-    routine_flags=["frizz_control"],
-)
-P4A = ProfileState(
-    texture_type="4A", texture_label="Loose Coils",
-    porosity="medium", density="high", elasticity="normal",
-    humidity_response="low sensitivity",
-    routine_flags=["seal_moisture"],
-)
-
-# ---------------------------------------------------------------------------
-# Environments
-# ---------------------------------------------------------------------------
-
-ENV_GCC = EnvironmentalContext(humidity_level="high", heat_stress="high", hard_water=False, ac_exposure="high")
-ENV_HW  = EnvironmentalContext(humidity_level="medium", heat_stress="low", hard_water=True)
-ENV_LOW = EnvironmentalContext(humidity_level="low", heat_stress="low", hard_water=False)
 
 # ---------------------------------------------------------------------------
 # 30 QA scenarios  (label, user_message, profile, env, expected_decision_state)

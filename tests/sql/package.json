@@ -1,0 +1,7 @@
+{
+  "name": "concierge-phase1-sql-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node phase1.mjs"},
+  "devDependencies": {"@electric-sql/pglite": "0.5.8"}
+}

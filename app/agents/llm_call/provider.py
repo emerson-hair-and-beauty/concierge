@@ -16,7 +16,18 @@ from app.config import LLM_PROVIDER, OPENAI_API_KEY, GEMINI_API_KEY
 import os
 
 OPENAI_CHAT_MODEL     = os.getenv("OPENAI_CHAT_MODEL",     "gpt-4o-mini")
-OPENAI_COMPOSER_MODEL = os.getenv("OPENAI_COMPOSER_MODEL", "gpt-4o")
+# gpt-4.1, not gpt-4o, and deliberately not gpt-5. Measured on the composer prompt
+# across three scenarios, two replies each, scored by app/services/tone_judge.py:
+#
+#   gpt-4o    3.8s   quality 3.58   met the length limit 0 times out of 6
+#   gpt-4.1   3.5s   quality 4.45   met the length limit 6 times out of 6
+#   gpt-5    39.7s   quality 4.40   met it, but spends ~1,600 tokens reasoning first
+#
+# gpt-4o cannot hold a sentence limit: told 1-3 sentences it writes 4 to 6, every
+# time, even after the contradictions in the prompt were removed. gpt-5 writes well
+# but is a reasoning model, and 40 seconds is not a chat reply. gpt-4.1 is the same
+# speed as what this replaced, with fewer output tokens.
+OPENAI_COMPOSER_MODEL = os.getenv("OPENAI_COMPOSER_MODEL", "gpt-4.1")
 OPENAI_EMBED_MODEL    = os.getenv("OPENAI_EMBED_MODEL",    "text-embedding-3-small")
 EMBED_DIMENSIONS      = int(os.getenv("EMBED_DIMENSIONS",  "384"))
 

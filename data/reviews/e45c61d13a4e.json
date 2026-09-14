@@ -1,0 +1,132 @@
+{
+ "version": "e45c61d13a4e",
+ "updated_at": "2026-08-17T12:14:38+00:00",
+ "replies": [
+  {
+   "id": "e45c61d13a4e/repair_breakage/1",
+   "version": "e45c61d13a4e",
+   "scenario": "repair_breakage",
+   "title": "Hair snapping when detangling",
+   "position": 1,
+   "customer": "my hair keeps snapping when i detangle and theres little broken pieces all over my shoulders",
+   "reply": "Those short broken pieces on your shoulders tell the whole story. Your hair is snapping because the inner structure has weakened. Right now, each time you detangle, you are seeing the evidence: strands give way under very little tension, and break before they can stretch. This is not a surface dryness issue. It is a sign that your curls have lost internal strength.\n\nYou are facing structural damage. This happens when the bonds within each strand get disrupted, usually from repeated swelling and contracting every wash day. That cycle is called hygral fatigue, and it is common in tight curls that hold water for too long, especially when low porosity keeps water trapped inside. Moisture-heavy routines make it worse, pushing more water into the strand and weakening the protein core.\n\nThe first step is to stop adding more moisture. Your hair cannot hold it safely right now. Instead, focus on repair. Protein is your priority, because it reinforces those weakened bonds and gives your curls the ability to stretch without snapping. Look for lightweight strengthening treatments rather than deep moisturising masks. Avoid anything that promises “intense hydration” or “deep moisture.” Those only extend the cycle that caused the breakage in the first place.\n\nHandle your hair as little as possible between washes. Every extra manipulation is another chance for a weakened strand to snap. Use fingers or a wide-tooth comb, always with plenty of slip from a light conditioner, and never rush detangling. This minimises mechanical stress, giving the repairs time to take hold.\n\nThis approach outranks deep moisture care or oiling because your underlying problem is structural weakness, not surface dryness. Repair first, then rebuild your routine around protein balance. That is the path that will restore your curl strength and stop the breakage you are seeing now.",
+   "selected": {
+    "decision_state": "repair_first",
+    "response_mode": "educate",
+    "response_depth": "long",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "none",
+    "product_exposure": "selective"
+   },
+   "recorded_at": "2026-08-13T17:25:00+00:00",
+   "verdict": "no",
+   "note": "sounds too technical.",
+   "judged_at": "2026-08-17T12:14:38+00:00"
+  },
+  {
+   "id": "e45c61d13a4e/repair_breakage/2",
+   "version": "e45c61d13a4e",
+   "scenario": "repair_breakage",
+   "title": "Hair snapping when detangling",
+   "position": 2,
+   "customer": "my hair keeps snapping when i detangle and theres little broken pieces all over my shoulders",
+   "reply": "Those snapping sounds and the broken pieces on your shoulders are your hair signalling a deeper issue in the structure, not just a surface dryness. When tight curls like yours start breaking during detangling, especially with low porosity, the culprit is nearly always internal weakness rather than a lack of moisture on the surface. Your hair is holding onto moisture too long or swelling and contracting with every wash, leading to what’s called hygral fatigue. This type of stress breaks down the inner bonds of your hair, leaving it fragile and prone to snapping with even gentle manipulation.\n\nAdding more moisture or richer creams will not help here. In fact, they can make the problem worse by keeping your hair in a prolonged swollen state. What your curls need right now is repair. That means focusing on products and routines that reinforce the internal structure of each strand. Protein treatments are the priority. They supply the building blocks your hair is missing and restore strength to the core. Look for treatments that contain hydrolyzed proteins. These are proteins broken down small enough to penetrate and support the hair’s inner layers.\n\nKeep manipulation to a minimum. Each time you detangle or style, your hair is under strain because its structure is compromised. Until you rebuild that strength, every tug risks another break. Use your fingers or a wide-tooth comb with plenty of slip, but do not increase detangling frequency or force.\n\nMoisture has its place, but only after you address the underlying weakness. If you add heavy moisture without reinforcing the structure first, you prolong the cycle of swelling and breakage. Repair always outpaces hydration when you see this pattern: snapping, little broken pieces, and a history of difficulty holding definition. This is not about getting softer curls. It is about giving your hair back the internal support it needs to handle styling and everyday movement.\n\nYou are not dealing with a climate issue or a basic need for heavier butters. This is structural. Prioritise repair and protein, and hold back on heavy moisturisers until you see less breakage. That is the fastest route back to resilient, defined curls.",
+   "selected": {
+    "decision_state": "repair_first",
+    "response_mode": "educate",
+    "response_depth": "long",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "none",
+    "product_exposure": "selective"
+   },
+   "recorded_at": "2026-08-13T17:25:00+00:00",
+   "verdict": "no",
+   "note": "Close but too technical in phrasing \"You're not dealing with a climate issue or a basic need for heavier butters\"",
+   "judged_at": "2026-08-17T12:14:38+00:00"
+  },
+  {
+   "id": "e45c61d13a4e/repair_low_elasticity/1",
+   "version": "e45c61d13a4e",
+   "scenario": "repair_low_elasticity",
+   "title": "Hair stretches and stays stretched",
+   "position": 1,
+   "customer": "when my hair is wet it stretches out really far and just stays there instead of springing back up",
+   "reply": "When your coils stretch out when wet and do not spring back, you are seeing what happens when the internal structure has taken a hit. This is not about moisture. Your hair is absorbing water too easily, then lacking the inner strength to recover its shape. High porosity makes this worse: water rushes in and swells the strand, but the protein framework inside is not holding the curl together. That floppy, stretched feeling is the result of that breakdown.\n\nThis is classic for hair that has taken on more water than it can handle over time. It is called hygral fatigue: the repeated swelling and contracting of the strand weakens the bonds that make your coils snap back. The more your hair stays in that over-stretched state, the more fragile it becomes. You will notice breakage when you detangle, and definition that fades as soon as the hair dries.\n\nThe next step is to change how you care for the inner structure, not just the surface. Focus on products and routines that reinforce with protein. Hydrolyzed protein is the ingredient to look for: it is protein broken down small enough to actually enter the strand, patching up those gaps and making the curl pattern resilient again. Low-manipulation styling matters too, because every time you stretch or twist fragile coils, you are asking them to do more work than they can handle right now.\n\nMoisture-heavy products and constant rewetting will only keep the cycle going. Repair comes first. You are not lacking moisture, you are lacking strength. Once the hair can spring back on its own, then you can layer in lightweight moisture and focus on sealing to lock it in. Right now, every step you take should answer to what your hair is missing: structure, not softness. This is how you get your snap back.",
+   "selected": {
+    "decision_state": "repair_first",
+    "response_mode": "educate",
+    "response_depth": "long",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "none",
+    "product_exposure": "selective"
+   },
+   "recorded_at": "2026-08-13T17:26:05+00:00",
+   "verdict": "no",
+   "note": "This is close but its missing the coaching tone",
+   "judged_at": "2026-08-17T12:14:38+00:00"
+  },
+  {
+   "id": "e45c61d13a4e/repair_low_elasticity/2",
+   "version": "e45c61d13a4e",
+   "scenario": "repair_low_elasticity",
+   "title": "Hair stretches and stays stretched",
+   "position": 2,
+   "customer": "when my hair is wet it stretches out really far and just stays there instead of springing back up",
+   "reply": "When your coils stretch out when wet and refuse to spring back, that is your hair signalling a loss of internal structure. Elasticity depends on the inner protein framework of each strand holding its shape after it absorbs water. When that structure is weakened, your hair stretches without resistance and lags on the return. \n\nThis is not a moisture issue. Coily hair that loses its bounce in this way is showing signs of protein fatigue: repeated swelling and over-softening have pushed the balance too far into moisture. High porosity like yours accelerates this, because open cuticles take in water and let out proteins faster than low-porosity hair. Every time you wash or hydrate, some of that internal scaffolding escapes. \n\nThe next step is to rebuild the strength at the core. This means pausing moisture-heavy products temporarily. Instead, choose a treatment that delivers hydrolyzed protein. Hydrolyzed protein is protein broken down into small enough parts to penetrate the hair shaft, where it reinforces the weak points and restores elasticity. You want to see a gradual return of that spring when you rinse out your treatment, not instant softness. \n\nLow manipulation is critical now. The more you stretch or detangle in this state, the more you risk breakage because the strand cannot snap back. Let your hair dry with minimal handling. Avoid aggressive styling or heavy combing until the bounce returns. \n\nMoisture only serves you after protein has rebuilt what was lost. Until the core is stable again, more hydration just keeps washing away the little structure that remains. That is why repair leads and moisture waits. This order protects your curl pattern and holds your length against further breakage.",
+   "selected": {
+    "decision_state": "repair_first",
+    "response_mode": "educate",
+    "response_depth": "long",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "none",
+    "product_exposure": "selective"
+   },
+   "recorded_at": "2026-08-13T17:26:05+00:00",
+   "verdict": "no",
+   "note": "Too absolute and instructional in tone.",
+   "judged_at": "2026-08-17T12:14:38+00:00"
+  },
+  {
+   "id": "e45c61d13a4e/repair_breakage/3",
+   "version": "e45c61d13a4e",
+   "scenario": "repair_breakage",
+   "title": "Hair snapping when detangling",
+   "position": 3,
+   "customer": "my hair keeps snapping when i detangle and theres little broken pieces all over my shoulders",
+   "reply": "When you see small broken pieces on your shoulders after detangling, the pattern is clear. Your strands are snapping because the internal structure is weakened, not just dry on the surface. With tight curls like yours, breakage at this level is always a sign that your hair cannot handle the stretching and combing. This is not about lacking moisture. The core issue is that your hair's protein structure is depleted, so it cannot hold together under tension.\n\nRight now, your curls are absorbing water but not holding on to strength. That points to a form of damage called hygral fatigue, where repeated swelling and contracting from moisture leaves the hair soft but fragile. When this happens, the cuticle cannot protect the inner core. The result is hair that feels hydrated but shatters when manipulated.\n\nThis is why adding more moisture-rich products will only make the problem worse. Heavy creams and leave-ins soften the strand further, but without inner reinforcement, you get more breakage, not less. What your curls are asking for is a targeted boost of protein and repair-focused care. Protein treatments deliver small building blocks that fill in gaps and rebuild the inner strength of each strand. You need this foundation in place before layering on any more moisture.\n\nReduce manipulation as much as possible, especially on wet hair, because every extra pass of your comb stresses the weakened structure. Choose gentle finger detangling instead of brushes. Space out wash days to give your hair time to recover. Hold off on any moisture-heavy masks or conditioners until you have repaired the foundation.\n\nPrioritising repair is what matters here because your hair’s current state cannot support anything else. Once you restore strength, you can start thinking about hydration again. Right now, every step should reinforce the structure, not soften it further. That is the only path to stopping the snapping.",
+   "selected": {
+    "decision_state": "repair_first",
+    "response_mode": "educate",
+    "response_depth": "long",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "none",
+    "product_exposure": "selective"
+   },
+   "recorded_at": "2026-08-13T17:30:46+00:00",
+   "verdict": "no",
+   "note": "Not quite. \"That is the only path to stopping the snapping\" this phrase is far too absolute.",
+   "judged_at": "2026-08-17T12:14:38+00:00"
+  },
+  {
+   "id": "e45c61d13a4e/repair_low_elasticity/3",
+   "version": "e45c61d13a4e",
+   "scenario": "repair_low_elasticity",
+   "title": "Hair stretches and stays stretched",
+   "position": 3,
+   "customer": "when my hair is wet it stretches out really far and just stays there instead of springing back up",
+   "reply": "The way your coils stretch out when wet and don’t spring back signals a structure problem. This is not just about moisture. What you are describing is a loss of elasticity, which happens when the hair’s inner structure has been weakened. High porosity coils like yours are especially prone to this when the balance between protein and moisture is off. Water keeps flooding in and out of the strand, which leaves it limp instead of bouncy.\n\nWhen hair stretches and stays stretched, the cuticle layers are not holding together tightly enough. This happens after repeated swelling and contracting from washing or heavy hydration, a process called hygral fatigue. The strand loses its ability to rebound because the proteins inside have been worn down. In your case, the hair’s fragility and tendency to lose definition are both rooted in this same structural gap.\n\nStart by shifting your focus to repair. Look for strengthening treatments that rebuild protein in the strand, not just coat it. Hydrolyzed protein is key here because it is broken down small enough to fit inside the hair and reinforce weak spots from within. This is how you restore elasticity and help your coils reclaim their spring. Avoid layering on more moisture right now. If you keep applying heavy hydrators without addressing the damage, the hair will stay overstretched and limp.\n\nThis approach outranks moisture-based routines for you. The root issue is not dryness, but the breakdown inside the strand. By targeting repair first, you set your coils up for shape, movement, and definition to return. Once the structure is stable again, then you can revisit moisture and styling. The first priority is putting strength back in so your hair can snap back after every wash.",
+   "selected": {
+    "decision_state": "repair_first",
+    "response_mode": "educate",
+    "response_depth": "long",
+    "tone_profile": "warm_reassuring",
+    "cta_pressure": "none",
+    "product_exposure": "selective"
+   },
+   "recorded_at": "2026-08-13T17:32:13+00:00",
+   "verdict": "no",
+   "note": "Too technical and absolute \" This approach outranks moisture based routines for you...\"",
+   "judged_at": "2026-08-17T12:14:38+00:00"
+  }
+ ]
+}

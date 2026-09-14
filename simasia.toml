@@ -1,0 +1,25 @@
+# Single source of truth for the Emerson tone model, read by the CLI and by
+# app/services/tone_guard.py. Keep them one file so `brand.id` and
+# `embedding.model` cannot drift between training and scoring — a vector from one
+# embedding model is meaningless against another, and the mismatch does not
+# raise, it silently returns garbage scores.
+#
+# Set EMBEDDING_KEY (or OPEN_AI_KEY in app/.env) before running
+# `simasia train --config simasia.toml` or scripts/train_emerson_tone.py.
+
+[brand]
+# Determines the artifact filename: simasia_<id>_head.joblib. Changing this
+# orphans the trained model below.
+id = "emerson"
+
+[embedding]
+provider = "openai"
+# The committed model was trained at 1536 dimensions with this model. Changing
+# either invalidates it and requires a full retrain.
+model = "text-embedding-3-small"
+
+[storage]
+dir = "app"
+
+[training]
+on_brand_file = "data/simasia/emerson_blog_corpus.txt"

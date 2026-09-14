@@ -1,0 +1,14 @@
+# Separate early-integration service. Switch PLAN_MODE to live after the launch checks.
+services:
+  - type: web
+    name: concierge-phase1-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-phase1.txt
+    startCommand: uvicorn app.phase1_main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PLAN_MODE
+        value: mock
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false

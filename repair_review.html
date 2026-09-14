@@ -1,0 +1,327 @@
+<title>Emerson concierge &mdash; reply review</title>
+<style>
+  :root{
+    --ground:#F6F8F8; --raised:#FFFFFF; --ink:#12242A; --muted:#5E7178;
+    --rule:#DCE4E5; --accent:#0F7F87; --accent-soft:#E4F0F1; --warm:#B4621C;
+    --warm-soft:#F7EBE0; --field:#FBFCFC;
+    --serif: Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;
+    --sans: system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --ground:#0D181C; --raised:#132227; --ink:#E4EDEF; --muted:#93A7AE;
+           --rule:#25383E; --accent:#3FB3BB; --accent-soft:#14343A; --warm:#DD9152;
+           --warm-soft:#3A2A1C; --field:#0F1D22; }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0D181C; --raised:#132227; --ink:#E4EDEF; --muted:#93A7AE;
+    --rule:#25383E; --accent:#3FB3BB; --accent-soft:#14343A; --warm:#DD9152;
+    --warm-soft:#3A2A1C; --field:#0F1D22;
+  }
+  :root[data-theme="light"]{
+    --ground:#F6F8F8; --raised:#FFFFFF; --ink:#12242A; --muted:#5E7178;
+    --rule:#DCE4E5; --accent:#0F7F87; --accent-soft:#E4F0F1; --warm:#B4621C;
+    --warm-soft:#F7EBE0; --field:#FBFCFC;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--sans);
+       line-height:1.6;margin:0;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:44rem;margin:0 auto;padding:0 1.5rem 6rem}
+  .tally{position:sticky;top:0;z-index:10;background:var(--ground);
+         border-bottom:1px solid var(--rule);padding:.7rem 1.5rem;font-size:.8rem}
+  .tally-inner{max-width:44rem;margin:0 auto;width:100%;display:flex;
+               gap:1rem;align-items:center;justify-content:space-between}
+  .count{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .count b{color:var(--ink);font-weight:600}
+  .copy{font:inherit;font-size:.8rem;border:1px solid var(--rule);background:var(--raised);
+        color:var(--ink);padding:.35rem .8rem;border-radius:2px;cursor:pointer}
+  .copy:hover{border-color:var(--accent);color:var(--accent)}
+  header{padding:4.5rem 0 3rem;border-bottom:1px solid var(--rule);margin-bottom:3.5rem}
+  h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,5vw,2.9rem);
+     line-height:1.15;margin:0 0 1rem;text-wrap:balance;letter-spacing:-.01em}
+  .standfirst{font-family:var(--serif);font-size:1.12rem;color:var(--muted);
+              margin:0 0 1.6rem;max-width:34rem}
+  .ask{border-left:2px solid var(--accent);padding:.1rem 0 .1rem 1.1rem;
+       margin:0;font-size:.95rem;max-width:34rem}
+  .ask b{color:var(--accent)}
+  .eyebrow{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
+           color:var(--accent);margin:0 0 .5rem;font-weight:600}
+  .scenario{padding-bottom:3.5rem;margin-bottom:3.5rem;border-bottom:1px solid var(--rule)}
+  .scenario:last-of-type{border-bottom:0}
+  h2{font-family:var(--serif);font-weight:400;font-size:1.6rem;margin:0 0 1.4rem;
+     line-height:1.25;text-wrap:balance}
+  .said{font-family:var(--serif);font-size:1.15rem;font-style:italic;
+        border-left:2px solid var(--rule);margin:0 0 1.6rem;padding:.2rem 0 .2rem 1.2rem}
+  .facts{display:grid;gap:.55rem;margin:0 0 2rem;font-size:.85rem}
+  .facts>div{display:grid;grid-template-columns:9.5rem 1fr;gap:1rem}
+  dt{color:var(--muted)}
+  dd{margin:0}
+  @media (max-width:34rem){ .facts>div{grid-template-columns:1fr;gap:.1rem} }
+  .lede{font-size:.85rem;color:var(--muted);margin:0 0 1.2rem}
+  .reply{background:var(--raised);border:1px solid var(--rule);padding:1.5rem;
+         margin-bottom:1rem;transition:border-color .15s}
+  .reply[data-voted="yes"]{border-color:var(--accent)}
+  .reply[data-voted="no"]{border-color:var(--warm)}
+  .tag{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+       margin:0 0 .8rem}
+  .reply-body{font-family:var(--serif);font-size:1.06rem}
+  .reply-body p{margin:0 0 .85rem}
+  .reply-body p:last-child{margin-bottom:0}
+  .vote{display:flex;gap:.5rem;align-items:center;margin-top:1.3rem;
+        padding-top:1.1rem;border-top:1px solid var(--rule);flex-wrap:wrap}
+  .btn{font:inherit;font-size:.82rem;border:1px solid var(--rule);background:transparent;
+       color:var(--muted);padding:.4rem .9rem;border-radius:2px;cursor:pointer;
+       transition:background .15s,color .15s,border-color .15s}
+  .btn.yes:hover,.btn.yes[aria-pressed="true"]{background:var(--accent-soft);
+       border-color:var(--accent);color:var(--accent)}
+  .btn.no:hover,.btn.no[aria-pressed="true"]{background:var(--warm-soft);
+       border-color:var(--warm);color:var(--warm)}
+  .btn:focus-visible,.copy:focus-visible,textarea:focus-visible{
+       outline:2px solid var(--accent);outline-offset:2px}
+  .voted{font-size:.78rem;color:var(--muted)}
+  .say{margin-top:1.1rem;display:block;background:var(--field);
+       border-left:2px solid var(--accent);padding:.85rem 1rem}
+  .say label{display:block;font-size:.8rem;color:var(--ink);margin-bottom:.45rem;font-weight:500}
+  .say label span{color:var(--muted);font-weight:400}
+  .say textarea{display:block;font:inherit;font-size:.9rem;font-family:var(--sans);
+       width:100%;background:var(--raised);color:var(--ink);border:1px solid var(--rule);
+       border-radius:2px;padding:.6rem .7rem;resize:vertical;min-height:4rem;line-height:1.5}
+  .say textarea::placeholder{color:var(--muted);opacity:.8}
+  .say textarea:focus{border-color:var(--accent);outline-offset:0}
+  .out{margin-top:2.5rem;border:1px solid var(--accent);background:var(--raised);padding:1.2rem}
+  .out-note{margin:0 0 .7rem;font-size:.85rem;color:var(--accent)}
+  .out textarea{display:block;width:100%;font-family:var(--mono);font-size:.78rem;
+       line-height:1.6;background:var(--field);color:var(--ink);
+       border:1px solid var(--rule);border-radius:2px;padding:.8rem;resize:vertical}
+  footer{margin-top:4rem;padding-top:2rem;border-top:1px solid var(--rule);
+         font-size:.85rem;color:var(--muted)}
+  footer h3{font-family:var(--serif);font-weight:400;font-size:1.15rem;color:var(--ink);margin:0 0 .7rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="tally">
+  <div class="tally-inner">
+    <span class="count"><b id="done">0</b> of 7 rated &middot; <b id="yes">0</b> yes &middot; <b id="no">0</b> no &middot; <b id="notes">0</b> notes</span>
+    <button class="copy" id="copy">Copy my answers</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <header>
+    <h1>Does this sound like Emerson?</h1>
+    <p class="standfirst">7 replies our concierge wrote to 2 customer questions. Nothing edited, nothing cherry-picked.</p>
+    <p class="ask">One question for each: <b>would you be happy for a customer to receive this?</b> Ignore typos and length, we are asking about voice. If you can say <em>why</em> in a few words, that is worth more than the vote.</p>
+  </header>
+
+      <section class="scenario">
+        <p class="eyebrow">Question 1 of 2</p>
+        <h2>Hair snapping when detangling</h2>
+        <blockquote class="said">my hair keeps snapping when i detangle and theres little broken pieces all over my shoulders</blockquote>
+        <dl class="facts">
+          <div><dt>What we decided</dt><dd>Her hair is breaking. Rebuild strength before styling anything.</dd></div>
+        </dl>
+        <p class="lede">4 different answers to the same question. Judge each on its own.</p>
+        
+        <article class="reply" data-id="r1">
+          <p class="tag">Answer 1 of 4</p>
+          <div class="reply-body"><p>You are seeing breakage during detangling, with small pieces collecting on your shoulders. This is not normal shedding. It points to your hair’s internal structure taking strain. When curls snap this way, the root cause is nearly always a weakness in the hair fibre itself. For you, this is not about needing more moisture. The breakage is happening because the strands have lost strength and elasticity. Tight curls with low porosity can struggle to absorb what they need. When protein gets out of balance, or the cuticle is stressed by repeated swelling and drying, you get what’s called hygral fatigue. That means the hair loses its ability to bounce back under tension, so it snaps instead of stretching.</p><p>Your next step is to bring protein and repair to the centre of your routine. Prioritise treatments that actually bond to the hair and rebuild its structure. Look for ingredients like hydrolyzed protein, which is protein broken down small enough to fit into the cuticle and reinforce weak spots. Avoid heavy butters and moisture-focused masks at this stage. They sit on low porosity hair and make the strands feel soft temporarily, but they do not address the underlying weakness. </p><p>Keep manipulation to a minimum while your hair recovers. Detangle only when wet and coated with a product that has slip. Work in sections and use your fingers or a wide-tooth comb, never a brush. Low porosity hair takes time to recover because the cuticle is tight, so protein needs to be part of your routine for several weeks, not just a single treatment.</p><p>This approach matters because adding more moisture right now would only make things worse. Your hair’s problem is not dryness, it is a lack of structure. Protein is what reverses this kind of breakage. Once you see fewer snapped pieces and your hair feels springy again, you can start balancing moisture back in. For now, repair comes first.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r1">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r1" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r2">
+          <p class="tag">Answer 2 of 4</p>
+          <div class="reply-body"><p>You described snapping during detangling and broken pieces on your shoulders. The pattern is classic structural weakness, not just surface dryness. Your curls are breaking because the internal bonds have taken on too much water over repeated wash days, then lost it again without enough reinforcement in between. This cycle, called hygral fatigue, leaves the cortex soft and prone to snapping under even gentle tension.</p><p>Low porosity hair already resists absorption. When moisture-heavy products sit on the surface, they create a false sense of hydration but never actually strengthen the strand. Over time, this throws off the balance between flexibility and strength. Hair that feels soft but breaks easily is showing the result of too much moisture and not enough protein. You are seeing it in the small broken bits after detangling and the struggle to keep definition from wash to wash.</p><p>The most important step now is to rebuild structure. That means shifting your focus from hydration to repair. Protein-based treatments are your priority. These deliver hydrolyzed proteins, which are broken down so they can slip into the cuticle and patch up weak spots inside the hair. When the hair has enough protein, it handles detangling with less breakage and holds its curl shape for longer.</p><p>Hold off on rich creams and deep conditioners for now. These will only add to the overload and delay recovery. Instead, detangle gently while the hair is wet and coated in a protein-rich conditioner. Limit manipulation as much as possible. Every time you handle your curls, you want them supported structurally, not softened to the point of fragility.</p><p>Repair comes first because without it, any moisture will just make the problem worse by swelling the hair shaft again. Once strength is restored and breakage slows, you can reintroduce moisture but only in balance. Right now, the broken pieces are telling you exactly what the hair needs. Protein, patience, and low manipulation are your route back to resilient curls.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r2">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r2" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r3">
+          <p class="tag">Answer 3 of 4</p>
+          <div class="reply-body"><p>Broken pieces on your shoulders and snapping during detangling signal structural weakness, not just dryness. This amount of breakage always points to a problem with the inner structure of your hair. On low-porosity curls like yours, the cuticle sits tight. Moisture can get trapped inside, especially if you layer on hydrating products or cowash without intervals for real cleansing. Over time, this causes hygral fatigue. The repeated swelling and shrinking makes each strand lose its strength. That is what is causing the snapping now.</p><p>What your hair needs is structural reinforcement. For your curl pattern and porosity, that means a shift away from moisture-heavy routines and into focused repair. Protein-based treatments are the priority. These work by filling in weak spots along the strand and reinforcing the natural structure, so the hair can take gentle manipulation without breaking. Low manipulation styling matters here as well. Every detangling session creates risk until the structure is rebuilt, so be gentle and keep your strands stretched as much as possible, using finger detangling or a wide-tooth comb.</p><p>Skip the heavier leave-ins and rich masks for now. These will only add to the overload and make the breakage worse. Instead, introduce a treatment that delivers hydrolyzed protein. That is protein broken down small enough to enter the hair shaft and actually bond with weak areas. If you are using a product like K18 or an equivalent bond-repair treatment, keep it in rotation, since these target the damage pathway directly.</p><p>This approach outranks layering moisture because your hair is not missing hydration, it is missing strength. The snapping is the sign. Once you restore that internal structure, your curls will regain their resilience, and you can rebuild a balanced routine. For now, repair comes first.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r3">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r3" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r4">
+          <p class="tag">Answer 4 of 4</p>
+          <div class="reply-body"><p>Breakage during detangling and those short pieces on your shoulders show one thing: your hair is structurally weakened right now. This is not about dryness or lack of moisture. The snapping comes from internal damage. The strands are struggling to hold together when stretched, which is why you see breakage instead of shedding.</p><p>The root cause is an imbalance inside the hair shaft. Low porosity curls like yours are slow to absorb both water and treatment, but when they do, too much moisture without enough structure leaves the cuticle soft and the cortex unsupported. That is why moisture-heavy routines or skipping protein leads straight to this kind of fragility. The outer layer swells and contracts, forcing the hair to flex beyond what it can handle. This is called hygral fatigue: repetitive swelling and shrinking that breaks down the hair’s internal bonds.</p><p>What your curls need now is focused repair. That means bringing back protein and structure before layering on any more moisture. Choose a protein treatment that works for low porosity hair. Look for hydrolyzed protein on the label. Hydrolyzed protein is broken down into smaller pieces so it can penetrate the tight cuticle instead of just sitting on top. This reinforces the inner bonds and gives your curls back their strength and resilience. After the treatment, keep detangling gentle and avoid heavy manipulation. Use your fingers or a wide-tooth comb, starting at the ends and working up, with plenty of slip.</p><p>Moisture is not the priority until your hair can hold itself together again. Skip deep conditioners and rich masks for now. Once you see less breakage and the strands feel bouncier with less snap, you can gradually balance moisture back in.</p><p>This path takes priority because repairing the structure addresses the source of the breakage. Moisture work would only soften the cuticle more and make the problem worse. Restore strength first, then protect it. This is how you stop the breakage at its source and get your curls to respond again.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r4">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r4" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+      </section>
+      <section class="scenario">
+        <p class="eyebrow">Question 2 of 2</p>
+        <h2>Hair stretches and stays stretched</h2>
+        <blockquote class="said">when my hair is wet it stretches out really far and just stays there instead of springing back up</blockquote>
+        <dl class="facts">
+          <div><dt>What we decided</dt><dd>Her hair is breaking. Rebuild strength before styling anything.</dd></div>
+        </dl>
+        <p class="lede">3 different answers to the same question. Judge each on its own.</p>
+        
+        <article class="reply" data-id="r5">
+          <p class="tag">Answer 1 of 3</p>
+          <div class="reply-body"><p>When your hair stretches when wet and does not spring back, you are seeing the effects of weakened internal structure. High stretch without return is a sign the protein bonds inside your strands are compromised. This happens when the hair has absorbed more water than it can structurally handle, which leads to a condition called hygral fatigue. Hygral fatigue is when the cuticle swells and contracts repeatedly until the inner structure loosens. For high-porosity coils, this risk is always higher. Your hair lets in water quickly but cannot hold its shape under that stress.</p><p>Repair and reinforcement come first here. Moisture is not the answer right now. Any extra hydration will only make the stretching worse, because the underlying problem is the lack of protein connections, not dryness. Focus your routine on strengthening treatments that restore those broken bonds. Use a protein-rich mask or treatment as your anchor, and avoid layering on heavy creams or butters until you see less stretch and better recoil. Too much moisture without structure is what caused this in the first place.</p><p>Handle your hair gently and reduce manipulation as much as possible. Tight coils under structural stress will snap easily. Give the repair process a few cycles before returning to your usual styling. Look for words like “repair,” “strengthen,” or “protein” in your treatment product. It is the right time for those, not for moisture masks.</p><p>This step outranks everything else because stretching with no bounce shows that the foundation is unstable. Every other action will give only temporary results until you rebuild that core strength. That is the difference between a lasting fix and chasing definition that never holds.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r5">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r5" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r6">
+          <p class="tag">Answer 2 of 3</p>
+          <div class="reply-body"><p>You described your coils stretching when wet and not bouncing back into shape. This is a classic sign your hair has lost elasticity. When tight coils pull long and stay limp, the internal structure has broken down. This is not about moisture or hydration. It happens because the protein bonds inside your hair have weakened from repeated swelling and contracting. That process is called hygral fatigue: when hair absorbs water too quickly, then dries out repeatedly, the structure softens and stops holding its shape.</p><p>Right now, your hair is acting like it has too much moisture compared to its protein. High-porosity hair lets water in fast, so you are more exposed to this than most. If you keep chasing softness with more leave-in or creams, you will only make the stretching worse. Coils need a strong internal scaffold before anything else. Moisture is important, but it cannot replace structure.</p><p>The fix is to put protein back into your routine. Look for treatments that use hydrolyzed protein, which means the protein is broken into small enough pieces to get inside the cuticle. Start with a protein mask or treatment, then follow up with minimal manipulation. Let your hair dry in a stretched state if you want to control shrinkage, but avoid heavy manipulation while it is wet. You are building strength, not just softness.</p><p>This outranks moisture because your hair’s stretch and limpness come from structural damage, not dryness. Adding more moisture-heavy products will only worsen the problem and leave your coils even less responsive. Focus on repair first. Once your hair regains some bounce, you can revisit your moisture and styling steps with a stronger foundation in place.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r6">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r6" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+        <article class="reply" data-id="r7">
+          <p class="tag">Answer 3 of 3</p>
+          <div class="reply-body"><p>When you describe your hair stretching when wet and not snapping back, you are seeing a classic sign of weakened structure. Healthy coils contract after you pull them. When they lose that spring, the internal bonds inside each strand are compromised. This is not about dryness or not enough moisture; the root cause is always structural.</p><p>There are two reasons your coils behave this way. Repeated swelling and shrinking from water exposure can cause hygral fatigue. This means the cuticle has been overworked by constant moisture, creating gaps in the structure. The other reason is a protein and moisture imbalance. Your hair is absorbing too much water, but it does not have enough internal structure to hold its shape.</p><p>The next step is to focus on repair, not hydration. Your routine needs protein-rich treatments and strengthening formulas. These deliver amino acids, which rebuild the bonds inside each strand. Choose products that list hydrolyzed protein high on the ingredients list. Hydrolyzed protein is broken down to penetrate the hair and restore elasticity. Avoid heavy butters and deep conditioners designed only for moisture. These will only make the stretching worse by swelling the hair further.</p><p>This approach outranks anything moisture-based because your hair cannot hold a curl pattern without internal strength. Protein comes first. Once you rebuild structure, you will see your coils regain spring and bounce, and future moisture will actually stay inside the strand instead of making it limp. Keep manipulation low during this phase to prevent breakage. Repair is a process, but you will feel the difference as soon as the structure returns.</p></div>
+          <div class="vote" role="group" aria-label="Rate this answer">
+            <button class="btn yes" data-vote="yes" aria-pressed="false">Sounds like us</button>
+            <button class="btn no" data-vote="no" aria-pressed="false">Doesn't</button>
+            <span class="voted" aria-live="polite"></span>
+          </div>
+          <div class="say">
+            <label for="c-r7">What made you say that? <span>Optional, but the most useful part.</span></label>
+            <textarea id="c-r7" rows="2" placeholder="A word or two is plenty. What felt off, or what worked."></textarea>
+          </div>
+        </article>
+      </section>  <div class="out" id="out" hidden>
+    <p class="out-note" id="out-note"></p>
+    <textarea id="out-text" rows="14" readonly aria-label="Your answers as text"></textarea>
+  </div>
+
+  <footer>
+    <h3>What happens with your answers</h3>
+    <p>Every reply you turn down becomes a training example, and your note tells us which part was wrong. "Sounds like an advert" and "too stiff" teach completely different things, so a few words beat a thumbs down on its own.</p>
+    <p style="margin-top:1rem">Being harsh here is far more useful than being kind.</p>
+    <p style="margin-top:1rem">Saved in this browser only. Use <em>Copy my answers</em> to send them back.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var KEY = 'emerson-blind-review';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { state = {}; }
+
+  function entry(id){ if (!state[id]) { state[id] = {}; } return state[id]; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  function refresh(){
+    var rated = 0, yes = 0, no = 0, notes = 0;
+    Object.keys(state).forEach(function(k){
+      var e = state[k];
+      if (e.vote) { rated++; if (e.vote === 'yes') { yes++; } else { no++; } }
+      if (e.note && e.note.trim()) { notes++; }
+    });
+    document.getElementById('done').textContent = rated;
+    document.getElementById('yes').textContent = yes;
+    document.getElementById('no').textContent = no;
+    document.getElementById('notes').textContent = notes;
+  }
+
+  document.querySelectorAll('.reply').forEach(function(card){
+    var id = card.dataset.id;
+    var label = card.querySelector('.voted');
+    var field = card.querySelector('textarea');
+
+    function paint(){
+      var v = entry(id).vote;
+      card.dataset.voted = v || '';
+      card.querySelectorAll('.btn').forEach(function(b){
+        b.setAttribute('aria-pressed', String(b.dataset.vote === v));
+      });
+      label.textContent = v ? 'Saved' : '';
+    }
+
+    card.querySelectorAll('.btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var v = btn.dataset.vote, e = entry(id);
+        if (e.vote === v) { delete e.vote; } else { e.vote = v; }
+        save(); paint(); refresh();
+        if (e.vote && !field.value) { field.focus(); }
+      });
+    });
+
+    field.value = entry(id).note || '';
+    field.addEventListener('input', function(){
+      entry(id).note = field.value; save(); refresh();
+    });
+
+    paint();
+  });
+  refresh();
+
+  document.getElementById('copy').addEventListener('click', function(){
+    var lines = ['Emerson reply review', ''];
+    document.querySelectorAll('.reply').forEach(function(card){
+      var e = state[card.dataset.id] || {};
+      var word = e.vote === 'yes' ? 'sounds like us'
+               : e.vote === 'no' ? 'does not sound like us'
+               : 'not rated';
+      lines.push(card.dataset.id + ': ' + word);
+      if (e.note && e.note.trim()) {
+        lines.push('    note: ' + e.note.trim().replace(/\s+/g, ' '));
+      }
+    });
+    var text = lines.join('\n');
+
+    // Sandboxed page: navigator.clipboard is usually blocked, and window.prompt
+    // with it, so both a copy and its fallback fail silently. Put the text on the
+    // page and select it instead. Ctrl+C then always works.
+    var out = document.getElementById('out');
+    var box = document.getElementById('out-text');
+    box.value = text; out.hidden = false; box.focus(); box.select();
+    out.scrollIntoView({ block: 'nearest' });
+
+    var note = document.getElementById('out-note');
+    note.textContent = 'Selected below. Press Ctrl+C (or Cmd+C) to copy.';
+    var btn = this;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        note.textContent = 'Copied to your clipboard. The text is below as well.';
+        btn.textContent = 'Copied';
+        setTimeout(function(){ btn.textContent = 'Copy my answers'; }, 1600);
+      }, function(){});
+    }
+  });
+})();
+</script>
