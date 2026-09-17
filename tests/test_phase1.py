@@ -18,7 +18,8 @@ from pydantic import ValidationError
 
 from app.api.plan import router
 from app.services.decision_state.models import EnvironmentalContext, ProductFilters, SessionSignal
-from app.services.plans.generator import PlanGenerator, detect, eligible, profile_for, retry_call, validate_prose
+from app.services.plans.generator import (DETECTION_TIMEOUT_SECONDS, PlanGenerator, detect, eligible,
+                                          profile_for, retry_call, validate_prose)
 from app.services.plans.mock import MockGenerator, MockStore
 from app.services.plans.models import CatalogBatch, EventBatch, PlanRequest
 from app.services.plans.service import PlanService
@@ -214,6 +215,10 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
         signal = await detect('  ')
         self.assertFalse(signal.breakage_active)
         self.assertEqual(signal.confidence_score, 1)
+
+    def test_detector_timeout_leaves_room_in_generation_budget(self):
+        self.assertGreaterEqual(DETECTION_TIMEOUT_SECONDS, 10)
+        self.assertLess(DETECTION_TIMEOUT_SECONDS, PlanService(MockStore()).generation_budget)
 
     async def test_product_and_weather_outages_keep_valid_routine(self):
         request = PlanRequest(**payload(concern_text='hair is snapping'))

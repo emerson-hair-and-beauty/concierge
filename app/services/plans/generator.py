@@ -16,6 +16,10 @@ from app.services.plans.models import PlanProse, PlanSnapshot, StrictModel
 
 log = logging.getLogger(__name__)
 
+# A fresh provider connection on the hosted service can exceed eight seconds.
+# Keep detection bounded while reserving time in the 25-second plan budget.
+DETECTION_TIMEOUT_SECONDS = float(os.getenv('PLAN_DETECTION_TIMEOUT_SECONDS', '12'))
+
 # Fixed copy. Emerson can approve these titles without changing the rules.
 STEPS = {
     'gentle_cleanse': ('Gentle cleanse', ['Cleanser']),
@@ -85,7 +89,7 @@ async def detect(text):
     from app.agents.llm_call.provider import generate_json
     prompt = _DETECTION_PROMPT.format(conversation='USER: ' + text)
     prompt += '\nReturn JSON matching this schema: ' + json.dumps(Detection.model_json_schema())
-    raw = await retry_call(lambda: generate_json(prompt), seconds=8)
+    raw = await retry_call(lambda: generate_json(prompt), seconds=DETECTION_TIMEOUT_SECONDS)
     result = Detection.model_validate(raw)
     if result.evidence_quote and result.evidence_quote not in text:
         raise ValueError('Detector evidence is not a quote from the input')

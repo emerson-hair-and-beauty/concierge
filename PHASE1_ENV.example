@@ -1,6 +1,8 @@
 # Configure these in Render or app/.env. Never commit real credentials.
 PLAN_MODE=mock
 CORS_ALLOWED_ORIGINS=https://your-store.myshopify.com
+# Optional detector deadline within the 25-second generation budget.
+PLAN_DETECTION_TIMEOUT_SECONDS=12
 
 # Required for persistent operation (PLAN_MODE=live).
 SUPABASE_URL=https://your-project.supabase.co

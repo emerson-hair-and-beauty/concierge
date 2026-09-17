@@ -156,6 +156,7 @@ No public endpoint reads events by `quiz_id`.
 - Empty concern text skips the detector and stores a detection record with a null concern code.
 - Nonempty-text detection failure cannot masquerade as a successful all-clear result.
 - Generation gets 25 seconds, with up to five more seconds for persistence. Completion after 30 seconds is rejected in SQL.
+- Concern detection gets 12 seconds by default to accommodate provider connection latency; override it with `PLAN_DETECTION_TIMEOUT_SECONDS`.
 - Caught fatal failures are persisted immediately. A five-second sweeper marks interrupted jobs older than 35 seconds failed.
 - A stopped service cannot run a sweeper; it checks again on startup.
 - Product or climate failures remove the affected optional content, with diagnostics.
