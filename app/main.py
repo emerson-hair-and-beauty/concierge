@@ -47,5 +47,8 @@ async def health_check():
 async def startup_event():
     print("\n--> REGISTERED ROUTES:")
     for route in app.routes:
-        print(f"    {route.path} [{route.methods}]")
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", None)
+        if path is not None:
+            print(f"    {path} [{methods}]")
     print("----------------------\n")
