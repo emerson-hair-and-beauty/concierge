@@ -73,6 +73,12 @@ An explicit porosity answer wins over moisture behaviour; the backend records th
 Missing porosity stays unknown. It is not silently converted to medium porosity.
 
 Poll every two seconds. A known failure appears immediately when it can be persisted.
+Failed plan responses include an `error` object with a safe `code` and `message`.
+Codes are `generation_failed`, `generation_timeout`, and `worker_lost_or_deadline`.
+Private failure diagnostics retain the generation/persistence stage, exception type,
+upstream HTTP status when available, and stack function names/line numbers.
+Exception messages, provider response bodies, URLs, and detector signals are excluded.
+These diagnostics are saved for newly caught failures; historical failures cannot be reconstructed.
 Stop polling at 45 seconds as a browser safeguard, and preserve the customer's next actions.
 The service accepts at most 25 simultaneous generations per worker. A busy service returns `429` with `Retry-After`.
 Do not discard the answers on `429`, `422`, or a failed submit.

@@ -15,6 +15,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import ValidationError
 
 from app.services.plans.models import CatalogBatch, EventBatch, Feedback, PlanRequest
+from app.services.plans.errors import public_error
 
 router = APIRouter(tags=['Phase 1'])
 log = logging.getLogger(__name__)
@@ -87,7 +88,12 @@ async def read_plan(plan_id: UUID, request: Request, response: Response):
     row = await require_plan(request, plan_id)
     response.headers['Cache-Control'] = 'no-store'
     response.headers['Referrer-Policy'] = 'no-referrer'
-    return row['plan_json'] if row['status'] == 'ready' else {'plan_id': row['plan_id'], 'status': row['status']}
+    if row['status'] == 'ready':
+        return row['plan_json']
+    result = {'plan_id': row['plan_id'], 'status': row['status']}
+    if row['status'] == 'failed':
+        result['error'] = public_error(row.get('failure_code'))
+    return result
 
 
 @router.post('/api/plan/{plan_id}/feedback', status_code=202)

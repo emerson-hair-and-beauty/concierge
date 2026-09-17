@@ -38,7 +38,11 @@ def install(app, enabled=True):
                 {'$ref': '#/components/schemas/PlanSnapshot'},
                 {'type': 'object', 'required': ['plan_id', 'status'], 'properties': {
                     'plan_id': {'type': 'string', 'format': 'uuid'},
-                    'status': {'type': 'string', 'enum': ['pending', 'failed']}}}]}}}
+                    'status': {'type': 'string', 'enum': ['pending', 'failed']},
+                    'error': {'type': 'object', 'required': ['code', 'message'],
+                              'description': 'Present for failed plans; contains no private diagnostics.',
+                              'properties': {'code': {'type': 'string'},
+                                             'message': {'type': 'string'}}}}}]}}}
         app.openapi_schema = schema
         return schema
 

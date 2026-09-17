@@ -54,10 +54,11 @@ class PlanStore:
         return await self.rpc('phase1_finish_plan', p_plan_id=str(plan_id),
                               p_plan=plan, p_diagnostics=diagnostics)
 
-    async def fail(self, plan_id, reason):
+    async def fail(self, plan_id, reason, diagnostics=None):
         return await self.request('PATCH', 'plans', params={
             'plan_id': 'eq.' + str(plan_id), 'status': 'eq.pending'}, body={
-            'status': 'failed', 'failure_code': reason, 'completed_at': now().isoformat()},
+            'status': 'failed', 'failure_code': reason, 'completed_at': now().isoformat(),
+            'diagnostics': diagnostics or []},
             prefer='return=representation')
 
     async def sweep(self):

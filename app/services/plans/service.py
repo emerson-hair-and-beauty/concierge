@@ -9,6 +9,7 @@ import httpx
 
 from app.services.plans.generator import PlanGenerator
 from app.services.plans.store import now
+from app.services.plans.errors import failure_diagnostics
 
 log = logging.getLogger(__name__)
 
@@ -53,12 +54,14 @@ class PlanService:
 
     async def generate(self, payload, row):
         diagnostics = []
+        stage = 'generation'
         age = (now() - datetime.fromisoformat(row['created_at'].replace('Z', '+00:00'))).total_seconds()
         try:
             if age >= self.generation_budget:
                 raise TimeoutError('Generation started after deadline')
             async with asyncio.timeout(self.generation_budget - max(age, 0)):
                 plan = await self.generator.build(payload, row, diagnostics)
+            stage = 'persistence'
             remaining = self.total_budget - (now() - datetime.fromisoformat(row['created_at'].replace('Z', '+00:00'))).total_seconds()
             if remaining <= 0:
                 raise TimeoutError('Generation exceeded total deadline')
@@ -73,10 +76,11 @@ class PlanService:
             raise
         except Exception as error:
             code = 'generation_timeout' if isinstance(error, TimeoutError) else 'generation_failed'
+            safe_diagnostics = failure_diagnostics(error, diagnostics, stage)
             log.error('Plan failed plan_id=%s code=%s error_type=%s diagnostics=%s',
-                      row['plan_id'], code, type(error).__name__, diagnostics)
+                      row['plan_id'], code, type(error).__name__, safe_diagnostics)
             try:
-                await self.store.fail(row['plan_id'], code)
+                await self.store.fail(row['plan_id'], code, safe_diagnostics)
             except Exception as persistence_error:
                 log.error('Failure status NOT saved plan_id=%s error_type=%s',
                           row['plan_id'], type(persistence_error).__name__)

@@ -37,9 +37,10 @@ class MockStore:
         row.update(status='ready', plan_json=copy.deepcopy(plan), diagnostics=diagnostics)
         return True
 
-    async def fail(self, plan_id, reason):
+    async def fail(self, plan_id, reason, diagnostics=None):
         if self.rows[plan_id]['status'] == 'pending':
-            self.rows[plan_id].update(status='failed', failure_code=reason)
+            self.rows[plan_id].update(status='failed', failure_code=reason,
+                                     diagnostics=copy.deepcopy(diagnostics or []))
 
     async def feedback(self, plan_id, payload):
         if len(self.feedback_rows) >= 10000:

@@ -80,6 +80,22 @@
                             "pending",
                             "failed"
                           ]
+                        },
+                        "error": {
+                          "type": "object",
+                          "required": [
+                            "code",
+                            "message"
+                          ],
+                          "description": "Present for failed plans; contains no private diagnostics.",
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "message": {
+                              "type": "string"
+                            }
+                          }
                         }
                       }
                     }

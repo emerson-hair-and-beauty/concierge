@@ -46,6 +46,20 @@ def prose(context, steps):
 
 
 class ContractTests(unittest.TestCase):
+    def test_failed_plan_exposes_only_allowlisted_error(self):
+        body = payload()
+        plan_id = self.client.post('/api/plan', json=body).json()['plan_id']
+        row = self.app.state.plan_service.store.rows[plan_id]
+        for code in ('generation_failed', 'generation_timeout', 'worker_lost_or_deadline', 'secret detail'):
+            row.update(status='failed', failure_code=code, diagnostics={'secret': 'private'})
+            response = self.client.get('/api/plan/' + plan_id)
+            self.assertEqual(response.status_code, 200)
+            result = response.json()
+            self.assertEqual(set(result), {'plan_id', 'status', 'error'})
+            self.assertEqual(result['error']['code'], code if code != 'secret detail' else 'generation_failed')
+            self.assertNotIn('private', response.text)
+            self.assertNotIn('secret detail', response.text)
+
     def setUp(self):
         self.app = app_for()
         self.client = TestClient(self.app)
@@ -321,6 +335,40 @@ class SelectionTests(unittest.TestCase):
 
 
 class StoreTests(unittest.IsolatedAsyncioTestCase):
+    async def test_fatal_error_persists_sanitized_diagnostics_and_logs(self):
+        store = MockStore()
+        request = PlanRequest(**payload())
+        row, _ = await store.create(request)
+        async def build(request, row, diagnostics):
+            diagnostics.append({'stage': 'detector', 'signals': {'quote': 'private-answer'}})
+            raise httpx.HTTPStatusError('secret-token private-answer',
+                request=httpx.Request('POST', 'https://provider.example/secret-token'),
+                response=httpx.Response(401, text='secret-token'))
+        generator = type('Generator', (), {'build': staticmethod(build)})()
+        with self.assertLogs('app.services.plans.service', level='ERROR') as logs:
+            await PlanService(store, generator).generate(request, dict(row))
+        details = row['diagnostics'][-1]
+        self.assertEqual(details['http_status'], 401)
+        self.assertEqual(details['stage'], 'generation')
+        self.assertEqual(details['error_type'], 'HTTPStatusError')
+        self.assertTrue(details['frames'])
+        output = json.dumps(row['diagnostics']) + str(logs.output)
+        self.assertNotIn('secret-token', output)
+        self.assertNotIn('private-answer', output)
+
+    @patch.dict(os.environ, {'SUPABASE_URL': 'https://db.example.com', 'SUPABASE_KEY': 'test'})
+    async def test_failure_patch_persists_diagnostics_only_for_pending_plan(self):
+        calls = []
+        async def handler(request):
+            calls.append(request)
+            return httpx.Response(200, json=[])
+        store = PlanStore(httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        diagnostics = [{'stage': 'persistence', 'error_type': 'HTTPStatusError', 'http_status': 403}]
+        await store.fail(uuid4(), 'generation_failed', diagnostics)
+        self.assertEqual(json.loads(calls[0].content)['diagnostics'], diagnostics)
+        self.assertEqual(calls[0].url.params['status'], 'eq.pending')
+        await store.close()
+
     @patch.dict(os.environ, {'SUPABASE_URL': 'https://db.example.com', 'SUPABASE_KEY': 'test'})
     async def test_submission_uniqueness_is_a_database_upsert(self):
         calls = []

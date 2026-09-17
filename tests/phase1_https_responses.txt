@@ -1,0 +1,2834 @@
+
+GET https://concierge-jzf8.onrender.com/health
+HTTP 200
+Content-Type: application/json
+{
+  "status": "healthy",
+  "service": "concierge-api"
+}
+
+GET https://concierge-jzf8.onrender.com/api/phase1/health
+HTTP 200
+Content-Type: application/json
+{
+  "enabled": true,
+  "mode": "mock",
+  "configured": true,
+  "missing_settings": []
+}
+
+POST https://concierge-jzf8.onrender.com/api/plan
+Request: {"submission_id": "a6ee044e-eaf6-4d6a-b92a-216c56a98ae5", "quiz_id": "eff82d16-9d72-4bac-b8b3-1d981ac32433", "texture": "3B", "density": "medium", "porosity": "low", "email": "https-smoke@example.invalid", "marketing_consent": false, "source": "https_smoke_test"}
+HTTP 202
+Content-Type: application/json
+{
+  "plan_id": "7deda4ab-7d5a-466a-b733-aca403646e23",
+  "status": "pending"
+}
+
+GET https://concierge-jzf8.onrender.com/api/plan/7deda4ab-7d5a-466a-b733-aca403646e23
+HTTP 200
+Content-Type: application/json
+{
+  "plan_id": "7deda4ab-7d5a-466a-b733-aca403646e23",
+  "status": "ready",
+  "created_at": "2026-09-17T12:44:49.992559+00:00",
+  "summary": "This sample routine shows how your personal plan will appear.",
+  "you_told_us": null,
+  "concerns": [],
+  "climate_note": null,
+  "steps": [
+    {
+      "order": 1,
+      "step": "cleanse",
+      "title": "Cleanse",
+      "why": "Start with a clean base for your routine.",
+      "products": [
+        {
+          "sku": "MOCK-CLEANSER",
+          "shopify_id": "100001",
+          "variant_id": "200001",
+          "handle": "sample-cleanser",
+          "name": "Sample Cleanser",
+          "price": "89.00",
+          "currency": "AED",
+          "why": "A sample product card for frontend development."
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "step": "condition",
+      "title": "Condition",
+      "why": "Follow with conditioning.",
+      "products": []
+    }
+  ]
+}
+
+POST https://concierge-jzf8.onrender.com/api/plan/7deda4ab-7d5a-466a-b733-aca403646e23/feedback
+Request: {"rating": "somewhat", "note": "Synthetic HTTPS smoke test"}
+HTTP 202
+Content-Type: (none)
+(empty response body)
+
+POST https://concierge-jzf8.onrender.com/api/events
+Request: {"quiz_id": "eff82d16-9d72-4bac-b8b3-1d981ac32433", "events": [{"id": "9e13e312-c039-4e0b-b284-3ad73d880dc3", "name": "quiz_started", "occurred_at": "2026-09-17T12:44:49.738347+00:00", "props": {"entry_path": "/https-smoke-test"}}]}
+HTTP 202
+Content-Type: (none)
+(empty response body)
+
+POST https://concierge-jzf8.onrender.com/api/events
+HTTP 202
+Content-Type: (none)
+(empty response body)
+Catalog test: unauthenticated request; no catalog import.
+
+POST https://concierge-jzf8.onrender.com/api/catalog
+Request: {}
+HTTP 503
+Content-Type: application/json
+{
+  "detail": "Catalog ingestion is not configured"
+}
+
+GET https://concierge-jzf8.onrender.com/api/plan/7deda4ab-7d5a-466a-b733-aca403646e23/go
+HTTP 503
+Content-Type: application/json
+{
+  "detail": "Store URL is not configured"
+}
+Webhook test: unsigned request; checks rejection, not paid-order processing.
+
+POST https://concierge-jzf8.onrender.com/api/webhooks/shopify/orders-paid
+Request: {}
+HTTP 503
+Content-Type: application/json
+{
+  "detail": "Webhook is not configured"
+}
+
+GET https://concierge-jzf8.onrender.com/docs
+HTTP 200
+Content-Type: text/html; charset=utf-8
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+    <link rel="shortcut icon" href="https://fastapi.tiangolo.com/img/favicon.png">
+    <title>Concierge API - Swagger UI</title>
+    </head>
+    <body>
+    <div id="swagger-ui">
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <!-- `SwaggerUIBundle` is now available on the page -->
+    <script>
+    const ui = SwaggerUIBundle({
+        url: '/openapi.json',
+    "dom_id": "#swagger-ui",
+"layout": "BaseLayout",
+"deepLinking": true,
+"showExtensions": true,
+"showCommonExtensions": true,
+oauth2RedirectUrl: window.location.origin + '/docs/oauth2-redirect',
+    presets: [
+        SwaggerUIBundle.presets.apis,
+        SwaggerUIBundle.SwaggerUIStandalonePreset
+        ],
+    })
+    </script>
+    </body>
+    </html>
+    
+
+GET https://concierge-jzf8.onrender.com/openapi.json
+HTTP 200
+Content-Type: application/json
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Concierge API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/search/products": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search Products Endpoint",
+        "operationId": "search_products_endpoint_search_products_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orchestrator/run-orchestrator": {
+      "post": {
+        "tags": [
+          "orchestrator"
+        ],
+        "summary": "Run Orchestrator Endpoint",
+        "operationId": "run_orchestrator_endpoint_orchestrator_run_orchestrator_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrchestratorInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orchestrator/routine/{user_id}": {
+      "get": {
+        "tags": [
+          "orchestrator"
+        ],
+        "summary": "Get Routine Endpoint",
+        "description": "Get the most recent routine for a user.",
+        "operationId": "get_routine_endpoint_orchestrator_routine__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Chat Endpoint",
+        "description": "POST /api/chat\n\nMain diagnostic conversation endpoint. Receives user messages and returns\nAI responses with optional handoff triggers.\n\nArgs:\n    request: ChatRequest with user_id, message, and session_id\n    \nReturns:\n    ChatResponse with AI message, handoff flag, and target vital",
+        "operationId": "chat_endpoint_api_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/stream": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Chat Stream Endpoint",
+        "description": "POST /api/chat/stream\n\nStreaming variant of /api/chat. Returns Server-Sent Events (SSE).\nEach event is a JSON line prefixed with \"data: \".\n\nEvents:\n  data: {\"type\": \"delta\", \"content\": \"...\"}       \u2014 text chunk\n  data: {\"type\": \"done\",  \"handoff\": bool, \"target_vital\": str|null, \"session_id\": str}\n  data: {\"type\": \"error\", \"detail\": \"...\"}         \u2014 on failure",
+        "operationId": "chat_stream_endpoint_api_chat_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/warmup": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Chat Warmup",
+        "description": "POST /api/chat/warmup\n\nProactively loads and caches Librarian context for a session, and returns\na personalised greeting for returning users.\n\nResponse:\n  {\n    \"status\": \"ready\" | \"failed\",\n    \"session_id\": str,\n    \"greeting\": str | null,   -- null for first-time users\n    \"is_returning_user\": bool\n  }",
+        "operationId": "chat_warmup_api_chat_warmup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/event": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Save Event Endpoint",
+        "description": "POST /api/event\n\nSaves a completed diagnostic event after the user provides slider input.\n\nArgs:\n    request: SaveEventRequest with user_id, session_id, vital value, and summary\n    \nReturns:\n    The saved HairEvent with generated ID",
+        "operationId": "save_event_endpoint_api_event_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HairEvent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vitals/{user_id}": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get Vitals Summary Endpoint",
+        "description": "GET /api/vitals/{user_id}\n\nRetrieve a summary of latest, average, and historical trends for all core vitals.\n\nArgs:\n    user_id: The user identifier\n    \nReturns:\n    Dict mapping each category to its latest, average, and history data.",
+        "operationId": "get_vitals_summary_endpoint_api_vitals__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events/{user_id}": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get User Events",
+        "description": "GET /api/events/{user_id}\n\nRetrieve all diagnostic events for a specific user.\n\nArgs:\n    user_id: The user identifier\n    \nReturns:\n    List of HairEvents for this user",
+        "operationId": "get_user_events_api_events__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/session/{session_id}": {
+      "delete": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Clear Session",
+        "description": "DELETE /api/session/{session_id}\n\nClear a chat session and its caches (useful for testing/debugging).",
+        "operationId": "clear_session_api_session__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scenarios/run": {
+      "post": {
+        "tags": [
+          "scenarios"
+        ],
+        "summary": "Run Scenarios",
+        "description": "Daily cron entry point. Iterates every user, builds their context, and\nhands off to process_alerts \u2014 the same engine the chat orchestrator uses.\nDedup + cooldown are owned by the alerts pipeline now; this endpoint just\nsources the inputs.",
+        "operationId": "run_scenarios_api_scenarios_run_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/wash": {
+      "post": {
+        "tags": [
+          "user_telemetry"
+        ],
+        "summary": "Log Wash",
+        "description": "Log an explicit hair-wash event to the wash_logs table.\nTriggered when a user opens the app on their designated wash day.",
+        "operationId": "log_wash_api_user_wash_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WashEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/location": {
+      "post": {
+        "tags": [
+          "user_telemetry"
+        ],
+        "summary": "Update Location",
+        "description": "Update a user's location based on their current IP or device request.\nThis feeds the AI weather defense scenarios.",
+        "operationId": "update_location_api_user_location_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/alerts": {
+      "get": {
+        "tags": [
+          "user_telemetry"
+        ],
+        "summary": "Get Alerts",
+        "description": "Fetch the last 3 unread AI scenario alerts for the user.",
+        "operationId": "get_alerts_api_user_alerts_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/alerts/{alert_id}/read": {
+      "post": {
+        "tags": [
+          "user_telemetry"
+        ],
+        "summary": "Mark Read",
+        "description": "Mark an alert as read so it no longer appears in the banner.",
+        "operationId": "mark_read_api_user_alerts__alert_id__read_post",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recommendations/{user_id}": {
+      "get": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Get Recommendations",
+        "description": "Fetch recommendations for a user.\nIf no recommendations exist for today, generate new ones via LLM.\nReturns pending recommendations only (already accepted/dismissed ones are excluded).",
+        "operationId": "get_recommendations_api_recommendations__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recommendations/{recommendation_id}": {
+      "patch": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Update Recommendation",
+        "description": "Update a recommendation status (accept or dismiss).",
+        "operationId": "update_recommendation_api_recommendations__recommendation_id__patch",
+        "parameters": [
+          {
+            "name": "recommendation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Recommendation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/push/subscribe": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Subscribe To Push",
+        "description": "Subscribe a user to push notifications.\nStores their push subscription details for later use.",
+        "operationId": "subscribe_to_push_api_push_subscribe_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Unsubscribe From Push",
+        "description": "Unsubscribe a user from push notifications.\nRemoves their subscription from the database.",
+        "operationId": "unsubscribe_from_push_api_push_subscribe_delete",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/web/chat": {
+      "post": {
+        "tags": [
+          "web_chat"
+        ],
+        "summary": "Web Chat Endpoint",
+        "description": "Sync endpoint for Web Chat.",
+        "operationId": "web_chat_endpoint_api_web_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/web/chat/stream": {
+      "post": {
+        "tags": [
+          "web_chat"
+        ],
+        "summary": "Web Chat Stream Endpoint",
+        "description": "Streaming SSE endpoint for Web Chat.",
+        "operationId": "web_chat_stream_endpoint_api_web_chat_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plan": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Submit",
+        "operationId": "submit_api_plan_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plan/{plan_id}": {
+      "get": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Read Plan",
+        "operationId": "read_plan_api_plan__plan_id__get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PlanSnapshot"
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "plan_id",
+                        "status"
+                      ],
+                      "properties": {
+                        "plan_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "failed"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plan/{plan_id}/feedback": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Feedback",
+        "operationId": "feedback_api_plan__plan_id__feedback_post",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Feedback"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Events",
+        "operationId": "events_api_events_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventBatch"
+              }
+            },
+            "text/plain": {
+              "schema": {
+                "$ref": "#/components/schemas/EventBatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Catalog",
+        "operationId": "catalog_api_catalog_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogBatch"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CatalogToken": []
+          }
+        ]
+      }
+    },
+    "/api/plan/{plan_id}/go": {
+      "get": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Go",
+        "operationId": "go_api_plan__plan_id__go_get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "shopify_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shopify Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhooks/shopify/orders-paid": {
+      "post": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Orders Paid",
+        "operationId": "orders_paid_api_webhooks_shopify_orders_paid_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/phase1/health": {
+      "get": {
+        "tags": [
+          "Phase 1"
+        ],
+        "summary": "Phase1 Health",
+        "operationId": "phase1_health_api_phase1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChatRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "message",
+          "session_id"
+        ],
+        "title": "ChatRequest",
+        "description": "Input schema for POST /api/chat"
+      },
+      "ChatResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "handoff": {
+            "type": "boolean",
+            "title": "Handoff",
+            "description": "True if ready for slider input",
+            "default": false
+          },
+          "target_vital": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Vital",
+            "description": "Which vital to collect: moisture|definition|scalp|breakage"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary",
+            "description": "Dense diagnostic summary of the chat"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keywords",
+            "description": "Extracted technical hair terms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "session_id"
+        ],
+        "title": "ChatResponse",
+        "description": "Output schema for POST /api/chat"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HairEvent": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "wash_day_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wash Day Number",
+            "description": "Day number in wash cycle"
+          },
+          "day_in_cycle": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day In Cycle",
+            "description": "Current day in hair cycle"
+          },
+          "vitals_payload": {
+            "$ref": "#/components/schemas/VitalsPayload"
+          },
+          "conversation_summary": {
+            "type": "string",
+            "title": "Conversation Summary",
+            "description": "Dense diagnostic summary of the chat"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keywords",
+            "description": "Extracted technical hair terms"
+          },
+          "primary_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Label",
+            "description": "Event category (e.g., MOISTURE, SCALP, DEFINITION, BREAKAGE)"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "session_id",
+          "conversation_summary"
+        ],
+        "title": "HairEvent",
+        "description": "Structured diagnostic output from a chat session"
+      },
+      "LocationUpdateRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "location"
+        ],
+        "title": "LocationUpdateRequest",
+        "description": "Input schema for POST /api/user/location"
+      },
+      "OrchestratorInput": {
+        "properties": {
+          "texture": {
+            "type": "string",
+            "title": "Texture"
+          },
+          "density": {
+            "type": "string",
+            "title": "Density"
+          },
+          "moisture_behaviour": {
+            "type": "string",
+            "title": "Moisture Behaviour"
+          },
+          "porosity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Porosity"
+          },
+          "scalp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scalp"
+          },
+          "damage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Damage"
+          },
+          "humidity_response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Humidity Response"
+          },
+          "hair_goals": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hair Goals"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "hair_length": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hair Length"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "texture",
+          "density",
+          "moisture_behaviour"
+        ],
+        "title": "OrchestratorInput"
+      },
+      "PushSubscriptionRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint"
+          },
+          "p256dh": {
+            "type": "string",
+            "title": "P256Dh"
+          },
+          "auth": {
+            "type": "string",
+            "title": "Auth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "endpoint",
+          "p256dh",
+          "auth"
+        ],
+        "title": "PushSubscriptionRequest",
+        "description": "Input schema for POST /api/push/subscribe"
+      },
+      "Recommendation": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "UUID of the recommendation"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Short title, e.g. 'Try a hydrating mask'"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "The recommendation message"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning",
+            "description": "Why this recommendation (e.g. 'Your moisture has been declining')"
+          },
+          "routine_step_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routine Step Ref",
+            "description": "Which routine step this affects (optional)"
+          },
+          "recommendation_type": {
+            "type": "string",
+            "title": "Recommendation Type",
+            "description": "Type: environmental | signal | habit"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "pending | accepted | dismissed",
+            "default": "pending"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At",
+            "description": "ISO timestamp"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At",
+            "description": "ISO timestamp when user made decision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "title",
+          "message",
+          "recommendation_type"
+        ],
+        "title": "Recommendation",
+        "description": "A single routine recommendation"
+      },
+      "RecommendationDecisionRequest": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "accepted | dismissed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "RecommendationDecisionRequest",
+        "description": "Input schema for PATCH /api/recommendations/{recommendation_id}"
+      },
+      "RecommendationsResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/Recommendation"
+            },
+            "type": "array",
+            "title": "Recommendations"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "RecommendationsResponse",
+        "description": "Output schema for GET /api/recommendations/{user_id}"
+      },
+      "SaveEventRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "target_vital": {
+            "type": "string",
+            "title": "Target Vital"
+          },
+          "vital_value": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Vital Value"
+          },
+          "conversation_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Summary"
+          },
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keywords"
+          },
+          "wash_day_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wash Day Number"
+          },
+          "day_in_cycle": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day In Cycle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "session_id",
+          "target_vital",
+          "vital_value"
+        ],
+        "title": "SaveEventRequest",
+        "description": "Input schema for POST /api/event"
+      },
+      "SearchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "top_k": {
+            "type": "integer",
+            "title": "Top K",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "SearchRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VitalsPayload": {
+        "properties": {
+          "moisture": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moisture"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition"
+          },
+          "scalp": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scalp"
+          },
+          "breakage": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breakage"
+          }
+        },
+        "type": "object",
+        "title": "VitalsPayload",
+        "description": "The 4 core hair health metrics (1-10 scale)"
+      },
+      "WashEventRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "title": "WashEventRequest",
+        "description": "Input schema for POST /api/user/wash"
+      },
+      "WebChatRequest": {
+        "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "message"
+        ],
+        "title": "WebChatRequest",
+        "description": "Input schema for the website chat widget"
+      },
+      "WebChatResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "text|product|faq",
+            "default": "text"
+          },
+          "shopify_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shopify Id",
+            "description": "The Shopify Product ID if type is 'product'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "session_id"
+        ],
+        "title": "WebChatResponse",
+        "description": "Output schema for the website chat widget (Sync endpoint)"
+      },
+      "CatalogBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "sync_id": {
+            "format": "uuid",
+            "title": "Sync Id",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "mode": {
+            "default": "full",
+            "enum": [
+              "full",
+              "partial"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogProduct"
+            },
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Products",
+            "type": "array"
+          },
+          "unmatched_matrix_skus": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 2000,
+            "title": "Unmatched Matrix Skus",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sync_id",
+          "generated_at",
+          "products"
+        ],
+        "title": "CatalogBatch",
+        "type": "object"
+      },
+      "CatalogProduct": {
+        "additionalProperties": false,
+        "properties": {
+          "sku": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_. -]+$",
+            "title": "Sku",
+            "type": "string"
+          },
+          "shopify_id": {
+            "maxLength": 30,
+            "pattern": "^[0-9]+$",
+            "title": "Shopify Id",
+            "type": "string"
+          },
+          "variant_id": {
+            "maxLength": 30,
+            "pattern": "^[0-9]+$",
+            "title": "Variant Id",
+            "type": "string"
+          },
+          "handle": {
+            "maxLength": 255,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "title": "Handle",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,10}|(?=[\\d.]{1,13}0*$)\\d{0,10}\\.\\d{0,2}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Price"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sku",
+          "shopify_id",
+          "variant_id",
+          "handle",
+          "title",
+          "price",
+          "currency",
+          "available"
+        ],
+        "title": "CatalogProduct",
+        "type": "object"
+      },
+      "Concern": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "absorption_blocked",
+              "hold_loss",
+              "breakage_active",
+              "buildup_present",
+              "coated_feel",
+              "scalp_sensitivity"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "Concern",
+        "type": "object"
+      },
+      "EventBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "quiz_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Quiz Id"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Plan Id"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyEvent"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "EventBatch",
+        "type": "object"
+      },
+      "Feedback": {
+        "additionalProperties": false,
+        "properties": {
+          "rating": {
+            "enum": [
+              "very_closely",
+              "somewhat",
+              "not_quite",
+              "not_sure"
+            ],
+            "title": "Rating",
+            "type": "string"
+          },
+          "rejected_shopify_ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Rejected Shopify Ids",
+            "type": "array"
+          },
+          "unclear_step": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Unclear Step"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "Feedback",
+        "type": "object"
+      },
+      "JourneyEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "props": {
+            "additionalProperties": true,
+            "title": "Props",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "occurred_at"
+        ],
+        "title": "JourneyEvent",
+        "type": "object"
+      },
+      "PlanProduct": {
+        "additionalProperties": false,
+        "properties": {
+          "sku": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Sku",
+            "type": "string"
+          },
+          "shopify_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Shopify Id",
+            "type": "string"
+          },
+          "variant_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Variant Id",
+            "type": "string"
+          },
+          "handle": {
+            "maxLength": 255,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "title": "Handle",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "price": {
+            "pattern": "^\\d+(\\.\\d{1,2})?$",
+            "title": "Price",
+            "type": "string"
+          },
+          "currency": {
+            "pattern": "^[A-Z]{3}$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "why": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sku",
+          "shopify_id",
+          "variant_id",
+          "handle",
+          "name",
+          "price",
+          "currency",
+          "why"
+        ],
+        "title": "PlanProduct",
+        "type": "object"
+      },
+      "PlanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "quiz_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Quiz Id"
+          },
+          "texture": {
+            "enum": [
+              "2A",
+              "2B",
+              "2C",
+              "3A",
+              "3B",
+              "3C",
+              "4A",
+              "4B",
+              "4C"
+            ],
+            "title": "Texture",
+            "type": "string"
+          },
+          "density": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Density",
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 254,
+            "title": "Email",
+            "type": "string"
+          },
+          "porosity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Porosity"
+          },
+          "moisture_behaviour": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Moisture Behaviour"
+          },
+          "strand_thickness": {
+            "anyOf": [
+              {
+                "enum": [
+                  "fine",
+                  "medium",
+                  "coarse"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Strand Thickness"
+          },
+          "elasticity": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Elasticity"
+          },
+          "scalp_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "dry",
+                  "normal",
+                  "oily",
+                  "sensitive"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scalp State"
+          },
+          "humidity_response": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Humidity Response"
+          },
+          "hair_length": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Hair Length"
+          },
+          "hair_goals": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Hair Goals",
+            "type": "array"
+          },
+          "concern_text": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Concern Text",
+            "type": "string"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Location"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "First Name"
+          },
+          "marketing_consent": {
+            "default": false,
+            "title": "Marketing Consent",
+            "type": "boolean"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          }
+        },
+        "required": [
+          "submission_id",
+          "texture",
+          "density",
+          "email"
+        ],
+        "title": "PlanRequest",
+        "type": "object"
+      },
+      "PlanSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "ready",
+            "title": "Status",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "you_told_us": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "You Told Us"
+          },
+          "summary": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "concerns": {
+            "items": {
+              "$ref": "#/components/schemas/Concern"
+            },
+            "title": "Concerns",
+            "type": "array"
+          },
+          "climate_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Climate Note"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PlanStep"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id",
+          "status",
+          "created_at",
+          "you_told_us",
+          "summary",
+          "concerns",
+          "climate_note",
+          "steps"
+        ],
+        "title": "PlanSnapshot",
+        "type": "object"
+      },
+      "PlanStep": {
+        "additionalProperties": false,
+        "properties": {
+          "order": {
+            "minimum": 1,
+            "title": "Order",
+            "type": "integer"
+          },
+          "step": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Step",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "why": {
+            "maxLength": 800,
+            "minLength": 1,
+            "title": "Why",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/PlanProduct"
+            },
+            "title": "Products",
+            "type": "array"
+          }
+        },
+        "required": [
+          "order",
+          "step",
+          "title",
+          "why",
+          "products"
+        ],
+        "title": "PlanStep",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "CatalogToken": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
