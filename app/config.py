@@ -14,8 +14,6 @@ GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY", "")
 WEATHER_API_KEY       = os.getenv("WEATHER_API_KEY", "")
 OPEN_WEATHER_API_KEY  = os.getenv("OPEN_WEATHER_API_KEY", "")
 
-if LLM_PROVIDER == "openai" and not OPENAI_API_KEY:
-    raise RuntimeError("LLM_PROVIDER=openai but OPENAI_API_KEY not found in app/.env or environment")
-
-if LLM_PROVIDER == "gemini" and not GEMINI_API_KEY:
-    raise RuntimeError("LLM_PROVIDER=gemini but GEMINI_API_KEY not found in app/.env or environment")
+# Provider credentials are validated when a provider-backed operation runs.
+# Keeping module import side-effect free lets health checks and routes that do not
+# use an LLM (including the Phase 1 mock API) start independently.
