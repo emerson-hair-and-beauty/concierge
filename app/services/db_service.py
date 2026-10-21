@@ -416,25 +416,6 @@ class DatabaseService:
             print(f"[DB ERROR] Failed to save user profile: {str(e)}")
             return False
 
-    def save_routine(self, user_id: str, routine_data: Dict) -> bool:
-        """
-        Save a generated routine to the user's metadata profile.
-        
-        Args:
-            user_id: The user identifier
-            routine_data: Dictionary containing the generated routine and products
-        """
-        try:
-            payload = {"user_id": user_id, "routine": routine_data}
-            
-            # Upsert into user_metadata table
-            self.supabase.table("user_metadata").upsert(payload).execute()
-            print(f"[DB] Saved routine for {user_id}")
-            return True
-        except Exception as e:
-            print(f"[DB ERROR] Failed to save routine: {str(e)}")
-            return False
-
     def get_pending_recommendations(self, user_id: str) -> List[Dict]:
         """
         Fetch pending (not yet accepted/dismissed) recommendations for a user.

@@ -52,9 +52,10 @@ async def orchestrator(answers: OrchestratorInput):
         yield json.dumps({"type": "status", "content": "Processing your input..."}) + "\n"
         answers_dict = await receive_input(answers)
 
-        # Extract profile fields that shouldn't go to the classifier/routine prompts
+        # Only keys with a user_metadata column: one unknown key makes Supabase
+        # reject the whole upsert. gender/email/hair_length have no column.
         profile_keys = [
-            "first_name", "location", "gender", "email", "hair_length",
+            "first_name", "location",
             "texture", "density", "moisture_behaviour", "humidity_response",
             "hair_goals", "scalp", "damage",
         ]
