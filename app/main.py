@@ -9,6 +9,7 @@ from app.api.scenarios import router as scenarios_router
 from app.api.user import router as user_router
 from app.api.recommendations import router as recommendations_router
 from app.web_chat_agent.router import router as web_chat_router
+from app.api.advisor_chat import router as advisor_chat_router
 
 app = FastAPI(title="Concierge API")
 
@@ -30,6 +31,7 @@ app.include_router(scenarios_router, prefix="/api/scenarios")
 app.include_router(user_router, prefix="/api/user")
 app.include_router(recommendations_router, prefix="/api")
 app.include_router(web_chat_router, prefix="/api/web")
+app.include_router(advisor_chat_router, prefix="/api/advisor")
 
 from app.services.plans.runtime import install as install_plans
 install_plans(app, enabled=os.getenv("PHASE1_ENABLED", "false").lower() == "true")

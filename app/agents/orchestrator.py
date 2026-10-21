@@ -53,7 +53,11 @@ async def orchestrator(answers: OrchestratorInput):
         answers_dict = await receive_input(answers)
 
         # Extract profile fields that shouldn't go to the classifier/routine prompts
-        profile_keys = ["first_name", "location", "gender", "email", "hair_length"]
+        profile_keys = [
+            "first_name", "location", "gender", "email", "hair_length",
+            "texture", "density", "moisture_behaviour", "humidity_response",
+            "hair_goals", "scalp", "damage",
+        ]
         profile_data = {k: answers_dict.get(k) for k in profile_keys if answers_dict.get(k) is not None}
         
         # Save user profile data to database if user_id is present
