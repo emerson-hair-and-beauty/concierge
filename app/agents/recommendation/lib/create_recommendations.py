@@ -14,14 +14,32 @@ def parseRoutineStep(step: dict) -> str:
    return step_info
 
 
+PRODUCTS_PER_STEP = 5
+
+
+def _unique_by_name(products: list) -> list:
+    """The catalogue has some products under several SKUs (e.g. sizes), so the
+    same product can match twice. Keep the first, best-ranked one. Names are
+    compared on letters and digits only: entries differ in spacing/punctuation."""
+    seen, unique = set(), []
+    for p in products:
+        name = (p.get("metadata") or {}).get("name") or p.get("content", "")
+        key = "".join(ch for ch in name.lower() if ch.isalnum())
+        if key not in seen:
+            seen.add(key)
+            unique.append(p)
+    return unique
+
+
 async def createRecommendations(routine: dict):
-    
+
     routine_steps = routine.get("routine", [])
-    
+
     for step in routine_steps:
         step_instructions = parseRoutineStep(step)
-        products_data = await query_products(step_instructions)
-        products = products_data.get("products", [])
+        # Over-fetch so dropping duplicates still leaves a full set.
+        products_data = await query_products(step_instructions, top_k=PRODUCTS_PER_STEP + 3)
+        products = _unique_by_name(products_data.get("products", []))[:PRODUCTS_PER_STEP]
         usage = products_data.get("embedding_usage")
         
         if usage:
