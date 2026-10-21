@@ -18,7 +18,7 @@ style rather than introducing a second framing convention.
 import json
 import traceback
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -34,6 +34,10 @@ router = APIRouter(tags=["advisor_chat"])
 # app/web_chat_agent/router.py's _web_chat_history_cache — process-local,
 # lost on restart, consistent with the other live chat paths' current state.
 _advisor_history_cache: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+
+# Product ids already shown per session, so later turns surface fresh products
+# (same freshness rule dashboard.py applies via shown_product_ids).
+_advisor_shown_products: Dict[str, Set[str]] = defaultdict(set)
 
 
 class AdvisorChatRequest(BaseModel):
@@ -106,13 +110,17 @@ async def advisor_chat_stream(request: AdvisorChatRequest):
         env = _build_environmental_context(metadata)
 
         full_reply = ""
+        shown = _advisor_shown_products[request.session_id]
         try:
             async for line in run_concierge_pipeline(
-                request.user_id, request.session_id, messages, profile, env
+                request.user_id, request.session_id, messages, profile, env,
+                shown_product_ids=shown,
             ):
                 event = json.loads(line)
                 if event.get("type") == "content":
                     full_reply += event.get("content", "")
+                elif event.get("type") == "products":
+                    shown.update(p["id"] for p in event.get("content", []) if p.get("id"))
                 yield line
         except Exception:
             # The HTTP status is already 200 by the time any line has been

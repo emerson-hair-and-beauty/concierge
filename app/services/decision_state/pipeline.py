@@ -180,6 +180,38 @@ async def _fetch_candidate_products(payload, session_signal=None, shown_product_
     return ranked[:5]
 
 
+def _normalise(text: str) -> str:
+    return " ".join(text.lower().replace("’", "'").split())
+
+
+def _name_variants(product: dict) -> set[str]:
+    """The reply may shorten a catalogue name, e.g. drop " by <Brand>" or a
+    leading brand. Variants under 8 characters are too generic to match on."""
+    metadata = product.get("metadata") or {}
+    name = _normalise(metadata.get("name") or "")
+    brand = _normalise(metadata.get("brand") or "")
+    variants = {name, name.split(" by ")[0]}
+    if brand and name.startswith(brand + " "):
+        variants.add(name[len(brand) + 1:])
+    return {v.strip() for v in variants if len(v.strip()) >= 8}
+
+
+def _mentioned_products(products: list, reply: str) -> list:
+    text = _normalise(reply)
+    return [p for p in products if any(v in text for v in _name_variants(p))]
+
+
+def _product_card(product: dict) -> dict:
+    metadata = product.get("metadata") or {}
+    return {
+        "id": product.get("id"),
+        "name": metadata.get("name") or "",
+        "brand": metadata.get("brand") or "",
+        "category": metadata.get("category") or "",
+        "primary_focus": metadata.get("primary_focus") or "",
+    }
+
+
 async def run_concierge_pipeline(
     user_id: str,
     session_id: str,
@@ -253,5 +285,16 @@ async def run_concierge_pipeline(
         conversation_summary=conversation_summary,
     )
 
+    reply = ""
     async for chunk in compose_response(composer_input):
+        if chunk.get("type") == "content":
+            reply += chunk.get("content", "")
         yield json.dumps(chunk) + "\n"
+
+    # Show only the products the reply actually names, not every candidate.
+    mentioned = _mentioned_products(candidate_products, reply)
+    if mentioned:
+        yield json.dumps({
+            "type": "products",
+            "content": [_product_card(p) for p in mentioned],
+        }) + "\n"
