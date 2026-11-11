@@ -19,6 +19,10 @@ class OrchestratorInput(BaseModel):
     # New onboarding fields
     humidity_response: Optional[str] = None  # Climate-specific field (GCC context)
     hair_goals: Optional[List[str]] = None   # Primary routine objective (multi-select)
+    # What the hair does now (checkboxes). Each value is a SessionSignal flag name:
+    # breakage_active, buildup_present, coated_feel, absorption_blocked, hold_loss,
+    # scalp_sensitivity. The decision engine reads these in place of chat signals.
+    concerns: Optional[List[str]] = None
 
     # User identity fields (persisted to user_metadata)
     first_name: Optional[str] = None

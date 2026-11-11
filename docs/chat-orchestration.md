@@ -67,6 +67,19 @@ straight-line pipeline: `collateAdvice` → `generateRoutine` →
 is the original quiz → routine → product flow, separate from the
 conversational chat system above.
 
+The routine generator now also runs the decision engine from the advisor
+chat (`build_form_strategy`). The optional `concerns` field holds signal
+names from form checkboxes. Code sets the signals from these names, and the
+intent is fixed, so this step uses no LLM. The engine output does three
+things:
+
+- A `strategy` event tells the client the decision state and the step rules.
+- `routine_prompt` gets the step count and the steps to include or leave out.
+- `createRecommendations` reranks the products of each step with the same
+  `_rerank_products` rule as the advisor chat.
+
+Callers that send no `concerns` still get a strategy from the profile alone.
+
 ## Open questions
 
 Left unresolved deliberately — see `README.md`'s Open Questions section:

@@ -31,7 +31,7 @@ def _unique_by_name(products: list) -> list:
     return unique
 
 
-async def createRecommendations(routine: dict):
+async def createRecommendations(routine: dict, product_filters=None):
 
     routine_steps = routine.get("routine", [])
 
@@ -39,7 +39,13 @@ async def createRecommendations(routine: dict):
         step_instructions = parseRoutineStep(step)
         # Over-fetch so dropping duplicates still leaves a full set.
         products_data = await query_products(step_instructions, top_k=PRODUCTS_PER_STEP + 3)
-        products = _unique_by_name(products_data.get("products", []))[:PRODUCTS_PER_STEP]
+        products = _unique_by_name(products_data.get("products", []))
+        if product_filters is not None:
+            # Same rerank as the advisor chat: products that break the
+            # decision engine's flag and hold rules move down the list.
+            from app.services.decision_state.pipeline import _rerank_products
+            products = _rerank_products(products, product_filters, top_n=len(products))
+        products = products[:PRODUCTS_PER_STEP]
         usage = products_data.get("embedding_usage")
         
         if usage:

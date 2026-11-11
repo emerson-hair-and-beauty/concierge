@@ -22,9 +22,27 @@ def routine_prompt(advice: dict) -> dict:
         all_flags.extend(flag_list)
     flags_text = ", ".join(sorted(set(all_flags))) if all_flags else "standard_care"
 
+    # Decision engine output (optional). It sets the main need, the step
+    # count, and the steps the routine must include or leave out.
+    strategy = advice.get("strategy")
+    step_count = 5
+    strategy_text = ""
+    if strategy is not None:
+        rc = strategy.routine_constraints
+        step_count = rc.step_count_target
+        strategy_text = f"""
+== DECISION ENGINE PLAN ==
+The rules engine already decided what this hair needs first: {strategy.decision_state}
+  Steps the routine MUST include: {", ".join(rc.mandatory_steps) or "none"}
+  Steps the routine MUST NOT include: {", ".join(rc.forbidden_steps) or "none"}
+Follow this plan. In each step's "notes", say in one sentence how the step serves this plan.
+The example below shows 5 steps. Use exactly {step_count} steps, and name each step to fit the plan.
+"""
+
     prompt = f"""
 You are the RoutineAgent for Emerson Curl Concierge.
-Your job is to create a personalised 5-step wash day routine.
+Your job is to create a personalised {step_count}-step wash day routine.
+{strategy_text}
 
 == PRIMARY GOAL ==
 The routine MUST be designed to achieve the following for this user:

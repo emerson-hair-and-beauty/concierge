@@ -5,6 +5,10 @@ from app.agents.input.lib.find_advice import collateAdvice
 from app.agents.routine.lib.routine_prompt import generateRoutine
 from app.api.models import OrchestratorInput
 from app.utils.cost_calculator import calculate_gemini_cost, calculate_embedding_cost
+from app.api.advisor_chat import _build_profile, _build_environmental_context
+from app.services.decision_state.decision_engine import build_strategy_payload
+from app.services.decision_state.models import SessionIntent, SessionSignal
+from app.services.session_signal.signal_detector import SIGNAL_NAMES
 
 # --------------------
 # Agent Functions
@@ -16,7 +20,29 @@ async def receive_input(answers: OrchestratorInput):
 
 async def processInput(answers):
     return collateAdvice(answers)
-     
+
+
+# A form user asks for a routine and gives clear answers. These fixed values
+# stand in for the chat intent service, so no LLM call is needed. "diagnosing"
+# stops the engine from picking reinforce_current_routine for a new routine.
+_FORM_INTENT = SessionIntent(
+    journey_state="diagnosing",
+    intent_clarity="high",
+    confidence_level="certain",
+    friction_score="low",
+    emotional_state="neutral",
+)
+
+
+def build_form_strategy(answers: dict):
+    """Run the decision engine on the form answers. The form concerns are
+    already signal names, so code sets the signals and no LLM reads them."""
+    profile = _build_profile(answers)
+    env = _build_environmental_context(answers)
+    concerns = set(answers.get("concerns") or [])
+    signal = SessionSignal(**{name: True for name in SIGNAL_NAMES if name in concerns})
+    return build_strategy_payload(profile, signal, env, _FORM_INTENT)
+
 
 async def processRoutine(directives, routine_flags):
     step_description = "Generating routine based on advice, and flags"
@@ -26,9 +52,9 @@ async def processRoutine(directives, routine_flags):
     #print("Routine generation complete:", routine)
     return routine
 
-async def processProductRecommendations(routine):
+async def processProductRecommendations(routine, product_filters=None):
     from app.agents.recommendation.lib.create_recommendations import createRecommendations
-    async for step_with_products in createRecommendations(routine):
+    async for step_with_products in createRecommendations(routine, product_filters):
         yield step_with_products
 
     
@@ -71,7 +97,19 @@ async def orchestrator(answers: OrchestratorInput):
                 print(f"[Orchestrator] Failed to save user profile: {e}")
 
         advice = await processInput(answers_dict)
-        
+
+        # The decision engine picks the main need and the routine limits.
+        # The client gets the result so it can show the reasoning.
+        strategy = build_form_strategy(answers_dict)
+        advice["strategy"] = strategy
+        yield json.dumps({
+            "type": "strategy",
+            "content": {
+                "decision_state": strategy.decision_state,
+                "routine_constraints": strategy.routine_constraints.model_dump(),
+            },
+        }) + "\n"
+
         yield json.dumps({"type": "status", "content": "Generating routine..."}) + "\n"
         
         full_routine_text = ""
@@ -100,10 +138,11 @@ async def orchestrator(answers: OrchestratorInput):
         # Accumulate the final routine structure with products
         final_routine_for_db = routine_json.copy()
         final_routine_for_db["routine"] = [] # Reset steps to populate with full product info
-        
+        final_routine_for_db["decision_state"] = strategy.decision_state
+
         yield json.dumps({"type": "status", "content": "Creating product recommendations..."}) + "\n"
-        
-        async for recommendation_chunk in processProductRecommendations(routine_json):
+
+        async for recommendation_chunk in processProductRecommendations(routine_json, strategy.product_filters):
             # Handle embedding usage
             if recommendation_chunk.get("type") == "embedding_usage":
                 u = recommendation_chunk["content"].get("usage", {})
