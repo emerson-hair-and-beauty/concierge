@@ -15,6 +15,7 @@ per event), matching `/orchestrator/run-orchestrator`'s existing streaming
 style rather than introducing a second framing convention.
 """
 
+import asyncio
 import json
 import traceback
 from collections import defaultdict
@@ -105,7 +106,8 @@ async def advisor_chat_stream(request: AdvisorChatRequest):
         from app.services.db_service import get_db
 
         db = get_db()
-        metadata = db.get_user_metadata(request.user_id) or {}
+        # The Supabase client blocks. Run it in a thread so other users are not held up.
+        metadata = await asyncio.to_thread(db.get_user_metadata, request.user_id) or {}
         profile = _build_profile(metadata)
         env = _build_environmental_context(metadata)
 

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Dict, List
 
 from app.services.session_signal.signal_detector import detect_signals, SIGNAL_NAMES
@@ -13,13 +14,14 @@ async def process_session_signals(
     # log_new_signals is additive: it only persists signals not already on record
     window = messages[-10:]
     detected = await detect_signals(window)
-    log_new_signals(user_id, session_id, detected)
+    # The Supabase client blocks. Run it in a thread so other users are not held up.
+    await asyncio.to_thread(log_new_signals, user_id, session_id, detected)
 
     # Snapshot merges everything logged so far in this session. If Supabase is
     # unreachable, get_session_snapshot degrades to all-False (see signal_state.py) —
     # OR in this turn's freshly detected signals as a floor, so an outage costs only
     # memory of past turns, not the current message too.
-    snapshot = get_session_snapshot(session_id)
+    snapshot = await asyncio.to_thread(get_session_snapshot, session_id)
     for k in SIGNAL_NAMES:
         if detected.get(k):
             snapshot[k] = True

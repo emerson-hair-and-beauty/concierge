@@ -251,9 +251,10 @@ async def run_concierge_pipeline(
         if k in signal_snapshot
     })
 
-    delivered_states = get_session_decision_states(session_id)
+    # The Supabase client blocks. Run it in a thread so other users are not held up.
+    delivered_states = await asyncio.to_thread(get_session_decision_states, session_id)
     strategy_payload = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
-    log_decision_state(user_id, session_id, strategy_payload.decision_state)
+    await asyncio.to_thread(log_decision_state, user_id, session_id, strategy_payload.decision_state)
     yield json.dumps({
         "type": "strategy",
         "content": strategy_payload.model_dump(),

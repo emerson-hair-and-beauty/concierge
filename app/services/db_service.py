@@ -14,8 +14,14 @@ class DatabaseService:
     """
     
     def __init__(self):
-        self.supabase = get_supabase()
+        get_supabase()
         print("[DB] DatabaseService initialized with Supabase backend")
+
+    @property
+    def supabase(self):
+        # Look up the client on each use, so a call from a worker thread gets
+        # that thread's own client (see get_supabase).
+        return get_supabase()
     
     def get_chat_history(self, session_id: str, limit: int = 10) -> List[Dict[str, str]]:
         """

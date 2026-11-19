@@ -47,6 +47,15 @@ async def health_check():
 # Add this startup event to list all active routes in your terminal
 @app.on_event("startup")
 async def startup_event():
+    # Supabase calls run in threads (asyncio.to_thread). The default pool size
+    # depends on the CPU count the host reports. Set it so 50 users can wait on
+    # the database at the same time on any Render plan.
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+    workers = int(os.getenv("THREAD_POOL_SIZE", "50"))
+    asyncio.get_running_loop().set_default_executor(ThreadPoolExecutor(max_workers=workers))
+    print(f"[Startup] cpu_count={os.cpu_count()} thread_pool_size={workers}")
+
     print("\n--> REGISTERED ROUTES:")
     for route in app.routes:
         path = getattr(route, "path", None)

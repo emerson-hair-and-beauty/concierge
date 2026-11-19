@@ -15,6 +15,18 @@ from app.config import LLM_PROVIDER, OPENAI_API_KEY, GEMINI_API_KEY
 # ---------------------------------------------------------------------------
 import os
 
+_openai = None
+
+
+def _openai_client():
+    """Return one shared client. A new client per call repeats the TLS setup
+    and opens new connections, which slows every user when many chat at once."""
+    global _openai
+    if _openai is None:
+        from openai import AsyncOpenAI
+        _openai = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    return _openai
+
 OPENAI_CHAT_MODEL     = os.getenv("OPENAI_CHAT_MODEL",     "gpt-4o-mini")
 # gpt-4.1, not gpt-4o, and deliberately not gpt-5. Measured on the composer prompt
 # across three scenarios, two replies each, scored by app/services/tone_judge.py:
@@ -47,8 +59,7 @@ async def generate_json(prompt: str) -> Dict:
 
 
 async def _openai_json(prompt: str) -> Dict:
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    client = _openai_client()
     response = await client.chat.completions.create(
         model=OPENAI_CHAT_MODEL,
         messages=[
@@ -90,8 +101,7 @@ async def stream_text(prompt: str, temperature: float = 0.1) -> AsyncGenerator:
 
 
 async def _openai_stream(prompt: str, temperature: float = 0.1) -> AsyncGenerator:
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    client = _openai_client()
     stream = await client.chat.completions.create(
         model=OPENAI_COMPOSER_MODEL,
         messages=[{"role": "user", "content": prompt}],
@@ -175,8 +185,7 @@ async def embed(text: str) -> List[float]:
 
 
 async def _openai_embed(text: str) -> List[float]:
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    client = _openai_client()
     response = await client.embeddings.create(
         model=OPENAI_EMBED_MODEL,
         input=text,

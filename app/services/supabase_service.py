@@ -4,6 +4,7 @@ Provides singleton access to Supabase client for the application
 """
 
 import os
+import threading
 from typing import Optional
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -38,17 +39,20 @@ class SupabaseService:
         return self.client
 
 
-# Global singleton instance
-_supabase_instance: Optional[SupabaseService] = None
+# One client per thread. The chat path runs Supabase calls in worker threads
+# (asyncio.to_thread). Threads that share one client break its HTTP/2
+# connection under load ("non-blocking socket operation" errors).
+_local = threading.local()
 
 def get_supabase() -> Client:
     """
-    Get the global Supabase client instance.
+    Get the Supabase client for the current thread.
     
     Returns:
         Supabase Client for database operations
     """
-    global _supabase_instance
-    if _supabase_instance is None:
-        _supabase_instance = SupabaseService()
-    return _supabase_instance.get_client()
+    instance: Optional[SupabaseService] = getattr(_local, "instance", None)
+    if instance is None:
+        instance = SupabaseService()
+        _local.instance = instance
+    return instance.get_client()
