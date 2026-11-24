@@ -39,8 +39,19 @@ def _get_logged_signals(session_id: str) -> List[str]:
     )
 
 
-def log_new_signals(user_id: str, session_id: str, detected: Dict[str, bool]) -> List[str]:
-    already_logged = _get_logged_signals(session_id)
+def get_logged_signals(session_id: str) -> List[str]:
+    return _get_logged_signals(session_id)
+
+
+def log_new_signals(
+    user_id: str,
+    session_id: str,
+    detected: Dict[str, bool],
+    already_logged: List[str] | None = None,
+) -> List[str]:
+    # Callers that already read the logged signals pass them in to skip a second read.
+    if already_logged is None:
+        already_logged = _get_logged_signals(session_id)
 
     def _write() -> List[str]:
         supabase = get_supabase()

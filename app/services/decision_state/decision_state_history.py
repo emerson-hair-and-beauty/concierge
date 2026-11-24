@@ -30,10 +30,18 @@ def _get_logged_states(session_id: str) -> List[str]:
     )
 
 
-def log_decision_state(user_id: str, session_id: str, decision_state: str | None) -> None:
+def log_decision_state(
+    user_id: str,
+    session_id: str,
+    decision_state: str | None,
+    already_logged: Set[str] | None = None,
+) -> None:
     if not decision_state:
         return
-    if decision_state in _get_logged_states(session_id):
+    # Callers that already read the logged states pass them in to skip a second read.
+    if already_logged is None:
+        already_logged = set(_get_logged_states(session_id))
+    if decision_state in already_logged:
         return
 
     def _write() -> None:

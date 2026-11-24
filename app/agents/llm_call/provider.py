@@ -27,7 +27,7 @@ def _openai_client():
         _openai = AsyncOpenAI(api_key=OPENAI_API_KEY)
     return _openai
 
-OPENAI_CHAT_MODEL     = os.getenv("OPENAI_CHAT_MODEL",     "gpt-4o-mini")
+OPENAI_CHAT_MODEL     = os.getenv("OPENAI_CHAT_MODEL",     "gpt-4.1-mini")
 # gpt-4.1, not gpt-4o, and deliberately not gpt-5. Measured on the composer prompt
 # across three scenarios, two replies each, scored by app/services/tone_judge.py:
 #
@@ -52,8 +52,14 @@ GEMINI_EMBED_MODEL = "models/gemini-embedding-001"
 # Used by: signal_detector, intent_detector, clarification_generator
 # ---------------------------------------------------------------------------
 
+# The calls that read the guest's message (signal, intent, clarification) can use
+# another provider than the rest. Only these calls move. The embedding must stay on
+# LLM_PROVIDER, because the Pinecone index was built with that embedding model.
+READER_PROVIDER = os.getenv("READER_PROVIDER", LLM_PROVIDER)
+
+
 async def generate_json(prompt: str) -> Dict:
-    if LLM_PROVIDER == "openai":
+    if READER_PROVIDER == "openai":
         return await _openai_json(prompt)
     return await _gemini_json(prompt)
 

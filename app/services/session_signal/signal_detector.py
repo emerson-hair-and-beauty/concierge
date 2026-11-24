@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Dict
 
 from app.agents.llm_call.provider import generate_json
@@ -96,13 +97,19 @@ async def detect_signals(messages: List[Dict[str, str]]) -> Dict[str, bool]:
     )
     print(f"[SignalDetector] Conversation sent:\n{conversation}\n")
 
+    # Start the fallback check at the same time as the primary check. It is used
+    # only when the primary finds nothing, but then the guest does not wait for a
+    # second model call. The cost is one extra small call on every message.
+    fallback_task = asyncio.create_task(
+        _run_detection(_FALLBACK_PROMPT.format(conversation=conversation), label="fallback")
+    )
     try:
         signals = await _run_detection(_DETECTION_PROMPT.format(conversation=conversation), label="primary")
         signals["fallback_used"] = False
 
         if _all_clear(signals):
-            print("[SignalDetector] All clear — running fallback detection")
-            fallback = await _run_detection(_FALLBACK_PROMPT.format(conversation=conversation), label="fallback")
+            print("[SignalDetector] All clear — using fallback detection")
+            fallback = await fallback_task
             fallback["fallback_used"] = True
             return fallback
 
@@ -111,3 +118,9 @@ async def detect_signals(messages: List[Dict[str, str]]) -> Dict[str, bool]:
     except Exception as e:
         print(f"[SignalDetector] Error: {e}")
         return {k: False for k in SIGNAL_NAMES} | {"confidence_score": 0.0, "evidence_quote": "", "fallback_used": False}
+    finally:
+        # The primary result was enough, or the check failed. Stop waiting for
+        # the fallback, and consume its error so it is not reported as unhandled.
+        if not fallback_task.done():
+            fallback_task.cancel()
+        fallback_task.add_done_callback(lambda t: t.cancelled() or t.exception())

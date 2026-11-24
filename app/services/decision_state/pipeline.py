@@ -224,6 +224,8 @@ async def run_concierge_pipeline(
     # --- Phase 1: Run all input services in parallel ---
     yield json.dumps({"type": "status", "content": "Analysing your situation..."}) + "\n"
 
+    # Read the decision states of earlier turns now, while the model calls run.
+    states_task = asyncio.create_task(asyncio.to_thread(get_session_decision_states, session_id))
     signal_task = process_session_signals(user_id, session_id, messages)
     intent_task = process_session_intent(messages)
 
@@ -251,10 +253,13 @@ async def run_concierge_pipeline(
         if k in signal_snapshot
     })
 
-    # The Supabase client blocks. Run it in a thread so other users are not held up.
-    delivered_states = await asyncio.to_thread(get_session_decision_states, session_id)
+    delivered_states = await states_task
     strategy_payload = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
-    await asyncio.to_thread(log_decision_state, user_id, session_id, strategy_payload.decision_state)
+    # Save the state while the products and the reply are prepared. The pipeline
+    # waits for the save before it ends, so the next turn can read it.
+    log_task = asyncio.create_task(asyncio.to_thread(
+        log_decision_state, user_id, session_id, strategy_payload.decision_state, delivered_states,
+    ))
     yield json.dumps({
         "type": "strategy",
         "content": strategy_payload.model_dump(),
@@ -299,3 +304,5 @@ async def run_concierge_pipeline(
             "type": "products",
             "content": [_product_card(p) for p in mentioned],
         }) + "\n"
+
+    await log_task
