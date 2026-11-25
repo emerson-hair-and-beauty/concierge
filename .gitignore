@@ -155,3 +155,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Load test reports (scripts/load_test_chats.py)
+scripts/load_test_report_*.json
