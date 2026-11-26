@@ -96,14 +96,25 @@ Experts ask before they recommend.
 7. user_wants_answer: true ONLY if the guest refuses questions or shows impatience: \
 "just tell me", "no questions", or they repeat a request for a recommendation after \
 the concierge already asked. Asking for help is not impatience.
-8. thesis_line: the THESIS as the expert says it to the guest. One or two short \
-sentences: the cause, and why it gives their symptom. Use only the THESIS and the \
-engine notes. State it as an expert. Never use hedge words: "maybe", "might", "could", \
-"possibly", "perhaps", "I think", "my guess", "it sounds like", "it seems". No \
-technical terms. Do not repeat their words back to them.
-9. rival_line: the rival in one short sentence, stated plainly. Example: "The other \
-cause is a strong shampoo used too often." No hedge words. Calm, everyday words: name \
-a habit or a product, never a problem with the guest's skin or body.
+8. symptoms: the symptoms the guest said, in their own words. Nothing else.
+9. lead_in: ONE sentence an expert says before the question. It names the guest's \
+symptoms and the two causes that usually give them: the THESIS first, then the rival. \
+Pattern: "<their symptoms> usually comes from one of two things: <thesis cause>, or \
+<rival cause>."
+   - Use every symptom in "symptoms", and no symptom that is not in it. Never add a \
+feeling or a symptom the guest did not say (for example "irritated", "uncomfortable", \
+"itchy").
+   - Describe each cause as a habit, a product, or something on the hair. Never say \
+that something is wrong with the guest's skin or body, and never tell the guest what \
+their hair or scalp "is".
+   - Never use hedge words: "maybe", "might", "could", "possibly", "perhaps", "I think", \
+"my guess", "it sounds like", "it seems". No technical terms.
+   NO SYMPTOMS: if "symptoms" is empty and the guest's message is about their hair, \
+there is nothing to test yet. Then decision is "ask", lead_in is "", the question asks \
+what they notice about their hair in one warm, open sentence, and the options are 2 to \
+4 common problems in everyday words: for example dry or breaking hair, hair that feels \
+coated, a scalp that bothers them, curls that do not hold. If the message is not about \
+their hair (store, delivery, price), decision is "advise".
 10. question: ONE question about ONE fact: the deciding fact. One sentence. Never ask \
 two things in one question. Do not apologise. Do not give advice in the question.
 11. options: 2 to 4 short answers the guest can tap. Each one must point toward the \
@@ -114,7 +125,7 @@ Never name a skin disease, a medical condition, a deficiency, or hormones.
 Return JSON with exactly these keys:
 {{"rival": str, "deciding_fact": str, "already_known": [str], \
 "confidence": "low"|"medium"|"high", "decision": "ask"|"advise", "decision_reason": str, \
-"user_wants_answer": bool, "thesis_line": str, "rival_line": str, "question": str, \
+"user_wants_answer": bool, "symptoms": [str], "lead_in": str, "question": str, \
 "options": [str]}}"""
 
 
@@ -132,8 +143,8 @@ def build_prompt(
     rivals = "\n".join(f"- {p}: {THESIS_PATHS[p]}" for p in RIVAL_PATHS if p != thesis_path)
     return _PROMPT.format(
         thesis_path=thesis_path,
-        thesis_plain=THESIS_PATHS[thesis_path],
-        thesis_notes=_DECISION_EXPLANATIONS.get(thesis_path, ""),
+        thesis_plain=THESIS_PATHS.get(thesis_path, "no cause found yet. If the guest names symptoms, decision is \"advise\""),
+        thesis_notes=_DECISION_EXPLANATIONS.get(thesis_path, "") if thesis_path in THESIS_PATHS else "(none)",
         rivals=rivals,
         texture=profile.texture_label,
         porosity=profile.porosity,
@@ -149,25 +160,28 @@ def should_ask(reasoning: Dict, asked: int) -> bool:
     """The rules for a question. The model gives its view; the code decides."""
     if asked >= MAX_QUESTIONS:
         return False                      # never ask more than MAX_QUESTIONS in a row
+    if reasoning.get("user_wants_answer"):
+        return False                      # the guest wants advice now
+    if reasoning.get("decision") != "ask":
+        return False                      # the model sees enough to advise, or a question would change nothing
+    if not reasoning.get("question") or len(reasoning.get("options") or []) < 2:
+        return False                      # a question needs text and tap options
+    if not reasoning.get("symptoms"):
+        return True                       # no hair problem named yet: ask what they notice
     if reasoning.get("thesis") not in THESIS_PATHS:
         return False                      # the engine path names no cause to test
     if reasoning.get("rival") not in RIVAL_PATHS or reasoning.get("rival") == reasoning.get("thesis"):
         return False                      # the rival must be another engine path
-    if reasoning.get("user_wants_answer"):
-        return False                      # the guest wants advice now
     if reasoning.get("confidence") == "high":
         return False                      # the rival is already ruled out
-    if reasoning.get("decision") != "ask":
-        return False                      # the model sees enough to advise, or a question would change nothing
-    if not reasoning.get("thesis_line"):
-        return False                      # a question without the thesis reads like a form
-    return bool(reasoning.get("question")) and len(reasoning.get("options") or []) >= 2
+    return bool(reasoning.get("lead_in"))  # a question without a lead-in feels abrupt
 
 
 def question_text(reasoning: Dict) -> str:
-    """The thesis, the rival, then the question, as one message."""
-    parts = [reasoning.get("thesis_line"), reasoning.get("rival_line"), reasoning.get("question")]
-    return " ".join(p.strip() for p in parts if p and p.strip())
+    """The lead-in (the guest's symptoms and the two causes), then the question, as one message."""
+    parts = [reasoning.get("lead_in"), reasoning.get("question")]
+    text = " ".join(p.strip() for p in parts if p and p.strip())
+    return text[:1].upper() + text[1:]   # the lead-in can start with the guest's own lower-case words
 
 
 async def run_thesis_step(
@@ -180,7 +194,7 @@ async def run_thesis_step(
     """Return the reasoning, and a question if the concierge must ask one.
     If the model call fails, return no question, so the concierge gives advice as before."""
     asked = _questions_in_a_row.get(session_id, 0)
-    if asked >= MAX_QUESTIONS or decision_state not in THESIS_PATHS:
+    if asked >= MAX_QUESTIONS:
         # The concierge gives advice now. Skip the model call, so the guest does not wait for it.
         _questions_in_a_row[session_id] = 0
         return {}, None
