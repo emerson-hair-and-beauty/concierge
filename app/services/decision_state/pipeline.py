@@ -230,25 +230,9 @@ async def run_concierge_pipeline(
     signal_task = process_session_signals(user_id, session_id, messages)
     intent_task = process_session_intent(messages)
 
-    if thesis_reasoner.THESIS_CLARIFY:
-        # The thesis step runs at the same time as the signal and intent steps.
-        signal_snapshot, session_intent, (reasoning, question) = await asyncio.gather(
-            signal_task, intent_task,
-            thesis_reasoner.run_thesis_step(session_id, messages, profile, env),
-        )
-    else:
-        signal_snapshot, session_intent = await asyncio.gather(signal_task, intent_task)
+    signal_snapshot, session_intent = await asyncio.gather(signal_task, intent_task)
 
     print(f"[Pipeline] signal={signal_snapshot} | intent={session_intent}")
-
-    # --- Thesis gate: ask one question that tests the most likely cause ---
-    if thesis_reasoner.THESIS_CLARIFY:
-        if reasoning:
-            yield json.dumps({"type": "thesis", "content": reasoning}) + "\n"
-        if question:
-            states_task.cancel()
-            yield json.dumps({"type": "clarification", "content": question.model_dump()}) + "\n"
-            return
 
     # --- Clarification gate: ask if we genuinely can't read the signal ---
     # The thesis step replaces this gate when it is on.
@@ -273,6 +257,19 @@ async def run_concierge_pipeline(
 
     delivered_states = await states_task
     strategy_payload = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
+
+    # --- Thesis gate: the engine's path is the thesis. Ask one question that tests it ---
+    if thesis_reasoner.THESIS_CLARIFY:
+        reasoning, question = await thesis_reasoner.run_thesis_step(
+            session_id, messages, profile, env, strategy_payload.decision_state,
+        )
+        if reasoning:
+            yield json.dumps({"type": "thesis", "content": reasoning}) + "\n"
+        if question:
+            # No advice is given on this turn, so the state is not saved as delivered.
+            yield json.dumps({"type": "clarification", "content": question.model_dump()}) + "\n"
+            return
+
     # Save the state while the products and the reply are prepared. The pipeline
     # waits for the save before it ends, so the next turn can read it.
     log_task = asyncio.create_task(asyncio.to_thread(

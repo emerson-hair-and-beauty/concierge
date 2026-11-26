@@ -1,11 +1,15 @@
 """
-Thesis step: think before the concierge gives advice.
+Thesis step: test the decision engine's path before the concierge gives advice.
 
-A reasoning model reads the conversation and writes a thesis (the most likely
-cause), one or two rival causes, the fact that separates them, and one question
-that tests that fact. The code, not the model, decides if the concierge asks the
-question. This keeps the limits fixed: one question per turn, and a maximum of
-MAX_QUESTIONS questions in a row before the concierge gives advice.
+The decision engine picks a path (for example reset_first). That path is the thesis.
+The model does not choose the thesis. It picks the strongest rival from a fixed list
+of engine paths, decides if one question can tell the two apart, and writes the
+words: the thesis, the rival, the question, and the tap options.
+
+The code, not the model, decides if the concierge asks. This keeps the limits fixed:
+one question per turn, and a maximum of MAX_QUESTIONS questions in a row before the
+concierge gives advice. After the guest answers, the engine runs again on the full
+chat. If the answer changes the path, the thesis changes with it.
 
 The step is on by default. Set THESIS_CLARIFY=0 to turn it off. When it is off,
 the pipeline uses the old clarification gate.
@@ -20,23 +24,44 @@ from app.services.decision_state.models import (
     EnvironmentalContext,
     ProfileState,
 )
-from app.services.decision_state.response_composer import FIXED_SECTION_DEFAULTS
+from app.services.decision_state.response_composer import _DECISION_EXPLANATIONS
 
 THESIS_CLARIFY = os.getenv("THESIS_CLARIFY", "1") == "1"
 MAX_QUESTIONS = 2
+
+# Engine paths that name a cause, so the concierge can test them with a question.
+# reinforce_current_routine and simplify_and_reduce_friction do not name a cause:
+# when the engine picks one of them, the concierge gives advice without a question.
+THESIS_PATHS = {
+    "repair_first":              "damage: weak, broken, or overworked hair (heat, colour, tension, rough handling)",
+    "reset_first":               "buildup: product, oil, or hard water residue that sits on the hair or scalp",
+    "scalp_calm_first":          "a sensitive scalp: the scalp reacts to products, friction, or the wash routine",
+    "hold_and_definition_first": "hold: the styling products or method do not hold the curl",
+    "climate_control_first":     "climate: humidity, heat, or air conditioning works against the hair",
+    "balanced_routine_first":    "routine balance: the wash, moisture, and styling steps are out of balance",
+}
+
+# Rivals are the paths that the guest's answer can move the engine to. The signal
+# step turns the chat into these paths. Climate and routine balance come only from
+# the saved profile and the weather, so an answer in the chat cannot move the engine
+# there. A question about them cannot change the advice.
+RIVAL_PATHS = ("repair_first", "reset_first", "scalp_calm_first", "hold_and_definition_first")
 
 # Questions asked in a row for each session. The count goes back to 0 when the
 # concierge gives advice. It lives in memory, like the advisor chat history.
 _questions_in_a_row: Dict[str, int] = {}
 
 _PROMPT = """\
-You are the diagnostic mind of Emerson, a hair care concierge for curly and textured hair \
-in the GCC. Before the concierge gives advice, you decide what is most likely happening, \
-and whether one question would change the advice.
+You write for Emerson, a hair care concierge for curly and textured hair in the GCC. \
+The decision engine already chose the most likely cause. That cause is the THESIS. \
+Do not change it, and do not add a cause of your own.
 
-Reason from first principles. Use the guest's own words as evidence. These patterns are \
-known to be true, and you can build on them:
-{knowledge}
+THESIS (engine path {thesis_path}): {thesis_plain}
+Engine notes for this path:
+{thesis_notes}
+
+RIVALS you can choose from (engine path: meaning):
+{rivals}
 
 SAVED PROFILE (from onboarding; "Unspecified" means unknown, and medium porosity may be a default):
 - texture: {texture}
@@ -50,47 +75,66 @@ CONVERSATION (oldest first):
 The concierge has asked {asked} question(s) in a row. It can ask at most {max_q} in a row.
 
 Think it through:
-1. thesis: the single most likely cause of what the guest describes.
-2. rival_causes: one or two other causes that also fit the guest's words. Real alternatives, \
-not small variations of the thesis.
-3. deciding_fact: one fact about the guest's life or routine that is true under the thesis \
-and false under a rival. Prefer lifestyle and routine facts: how often they wash, the products \
-they use, exercise or swimming, time in air conditioning, heat styling, protective styles.
-4. already_known: facts the guest already gave. Never ask about these again.
-5. confidence: "high" if the conversation already rules out the rivals, "medium" if the \
-thesis is likely but a rival is still open, "low" if you cannot tell.
-6. decision: "ask" or "advise". Picture an expert at the Emerson counter.
-   - "ask" when the guest names a symptom but not enough about their routine or life to \
-choose between the thesis and a rival, and the right first step differs between them.
-   - "advise" when the guest already gave their routine, products, or history and that is \
-enough to pick a first step, when the question is not about their hair (store, delivery, \
-price), or when the same first step is right under the thesis and every rival.
-   A guest who asks "what should I use?" still gets a question if the cause is open. \
+1. rival: the engine path from the RIVALS list that best fits the guest's words. Use \
+the path name exactly as written.
+2. deciding_fact: one fact about the guest's life or routine that is true under the \
+thesis and false under the rival. Prefer lifestyle and routine facts: how often they \
+wash, the products they use, exercise or swimming, time in air conditioning, heat \
+styling, protective styles.
+3. already_known: facts the guest already gave. Never ask about these again.
+4. confidence: "high" if the conversation already rules out the rival, "medium" if the \
+thesis is likely but the rival is still open, "low" if you cannot tell.
+5. decision: "ask" or "advise". Picture an expert at the Emerson counter.
+   - "ask" when the guest names a symptom but not enough about their routine or life \
+to choose between the thesis and the rival.
+   - "advise" when the guest already gave enough to confirm the thesis, when the \
+question is not about their hair (store, delivery, price), or when the answer would \
+not change the first step.
+   A guest who asks "what should I use?" still gets a question if the rival is open. \
 Experts ask before they recommend.
-7. decision_reason: one short sentence that explains the decision.
-8. user_wants_answer: true ONLY if the guest refuses questions or shows impatience: "just \
-tell me", "no questions", or they repeat a request for a recommendation after the concierge \
-already asked. Asking for help is not impatience.
-9. question: ONE question that tests the deciding fact. Write it the way an expert at the \
-Emerson counter would say it: name what you suspect and the rival in a few plain words, \
-then ask. Maximum 2 short sentences. No technical terms. Do not repeat their words back \
-to them. Do not apologise. Do not give advice in the question.
-10. options: 2 to 4 short answers the guest can tap. Each one must point toward the thesis \
-or a rival. Plain, everyday words.
+6. decision_reason: one short sentence that explains the decision.
+7. user_wants_answer: true ONLY if the guest refuses questions or shows impatience: \
+"just tell me", "no questions", or they repeat a request for a recommendation after \
+the concierge already asked. Asking for help is not impatience.
+8. thesis_line: the THESIS as the expert says it to the guest. One or two short \
+sentences: the cause, and why it gives their symptom. Use only the THESIS and the \
+engine notes. State it as an expert. Never use hedge words: "maybe", "might", "could", \
+"possibly", "perhaps", "I think", "my guess", "it sounds like", "it seems". No \
+technical terms. Do not repeat their words back to them.
+9. rival_line: the rival in one short sentence, stated plainly. Example: "The other \
+cause is a strong shampoo used too often." No hedge words. Calm, everyday words: name \
+a habit or a product, never a problem with the guest's skin or body.
+10. question: ONE question about ONE fact: the deciding fact. One sentence. Never ask \
+two things in one question. Do not apologise. Do not give advice in the question.
+11. options: 2 to 4 short answers the guest can tap. Each one must point toward the \
+thesis or the rival. Plain, everyday words.
+
+Never name a skin disease, a medical condition, a deficiency, or hormones.
 
 Return JSON with exactly these keys:
-{{"thesis": str, "rival_causes": [str], "deciding_fact": str, "already_known": [str], \
+{{"rival": str, "deciding_fact": str, "already_known": [str], \
 "confidence": "low"|"medium"|"high", "decision": "ask"|"advise", "decision_reason": str, \
-"user_wants_answer": bool, "question": str, "options": [str]}}"""
+"user_wants_answer": bool, "thesis_line": str, "rival_line": str, "question": str, \
+"options": [str]}}"""
 
 
-def build_prompt(messages: List[Dict[str, str]], profile: ProfileState, env: EnvironmentalContext, asked: int) -> str:
+def build_prompt(
+    messages: List[Dict[str, str]],
+    profile: ProfileState,
+    env: EnvironmentalContext,
+    asked: int,
+    thesis_path: str,
+) -> str:
     conversation = "\n".join(
         f"{'GUEST' if m.get('role') == 'user' else 'CONCIERGE'}: {m.get('content', '')}"
         for m in messages[-10:]
     )
+    rivals = "\n".join(f"- {p}: {THESIS_PATHS[p]}" for p in RIVAL_PATHS if p != thesis_path)
     return _PROMPT.format(
-        knowledge=FIXED_SECTION_DEFAULTS["diagnostic_reasoning_block"],
+        thesis_path=thesis_path,
+        thesis_plain=THESIS_PATHS[thesis_path],
+        thesis_notes=_DECISION_EXPLANATIONS.get(thesis_path, ""),
+        rivals=rivals,
         texture=profile.texture_label,
         porosity=profile.porosity,
         density=profile.density,
@@ -105,13 +149,25 @@ def should_ask(reasoning: Dict, asked: int) -> bool:
     """The rules for a question. The model gives its view; the code decides."""
     if asked >= MAX_QUESTIONS:
         return False                      # never ask more than MAX_QUESTIONS in a row
+    if reasoning.get("thesis") not in THESIS_PATHS:
+        return False                      # the engine path names no cause to test
+    if reasoning.get("rival") not in RIVAL_PATHS or reasoning.get("rival") == reasoning.get("thesis"):
+        return False                      # the rival must be another engine path
     if reasoning.get("user_wants_answer"):
         return False                      # the guest wants advice now
     if reasoning.get("confidence") == "high":
-        return False                      # the rivals are already ruled out
+        return False                      # the rival is already ruled out
     if reasoning.get("decision") != "ask":
         return False                      # the model sees enough to advise, or a question would change nothing
+    if not reasoning.get("thesis_line"):
+        return False                      # a question without the thesis reads like a form
     return bool(reasoning.get("question")) and len(reasoning.get("options") or []) >= 2
+
+
+def question_text(reasoning: Dict) -> str:
+    """The thesis, the rival, then the question, as one message."""
+    parts = [reasoning.get("thesis_line"), reasoning.get("rival_line"), reasoning.get("question")]
+    return " ".join(p.strip() for p in parts if p and p.strip())
 
 
 async def run_thesis_step(
@@ -119,25 +175,27 @@ async def run_thesis_step(
     messages: List[Dict[str, str]],
     profile: ProfileState,
     env: EnvironmentalContext,
+    decision_state: str | None,
 ) -> tuple[Dict, ClarificationRequest | None]:
     """Return the reasoning, and a question if the concierge must ask one.
     If the model call fails, return no question, so the concierge gives advice as before."""
     asked = _questions_in_a_row.get(session_id, 0)
-    if asked >= MAX_QUESTIONS:
-        # The concierge must give advice now. Skip the model call, so the guest does not wait for it.
+    if asked >= MAX_QUESTIONS or decision_state not in THESIS_PATHS:
+        # The concierge gives advice now. Skip the model call, so the guest does not wait for it.
         _questions_in_a_row[session_id] = 0
         return {}, None
     try:
-        reasoning = await generate_reasoning_json(build_prompt(messages, profile, env, asked))
+        reasoning = await generate_reasoning_json(build_prompt(messages, profile, env, asked, decision_state))
     except Exception as e:
         print(f"[Thesis] Reasoning failed, the concierge gives advice without it: {e}")
         return {}, None
 
+    reasoning["thesis"] = decision_state   # the engine's path, never the model's
     print(f"[Thesis] asked={asked} reasoning={reasoning}")
     if should_ask(reasoning, asked):
         _questions_in_a_row[session_id] = asked + 1
         question = ClarificationRequest(
-            question=reasoning["question"],
+            question=question_text(reasoning),
             options=[ClarificationOption(label=o) for o in reasoning["options"][:4]],
         )
         return reasoning, question

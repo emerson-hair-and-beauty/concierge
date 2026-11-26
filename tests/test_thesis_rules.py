@@ -14,9 +14,13 @@ sys.path.insert(0, ".")
 from app.services.thesis.thesis_reasoner import MAX_QUESTIONS, should_ask
 
 OPEN = {
+    "thesis": "reset_first",
+    "rival": "scalp_calm_first",
     "confidence": "medium",
     "decision": "ask",
     "user_wants_answer": False,
+    "thesis_line": "Oily roots with dry ends point to buildup.",
+    "rival_line": "The other cause is a strong shampoo used too often.",
     "question": "How often do you wash?",
     "options": ["Every day", "Once a week"],
 }
@@ -43,6 +47,14 @@ results = [
     # A question needs tap options, or the guest cannot answer it quickly.
     case("fewer than 2 options -> give advice", {**OPEN, "options": ["Every day"]}, 0, False),
     case("no question text -> give advice", {**OPEN, "question": ""}, 0, False),
+    # The thesis must be the engine's path, and the path must name a cause.
+    case("engine path names no cause -> give advice", {**OPEN, "thesis": "reinforce_current_routine"}, 0, False),
+    # The rival must be another engine path that an answer can move the engine to.
+    case("rival made up by the model -> give advice", {**OPEN, "rival": "a skin condition"}, 0, False),
+    case("rival same as thesis -> give advice", {**OPEN, "rival": "reset_first"}, 0, False),
+    case("rival the chat cannot reach -> give advice", {**OPEN, "rival": "climate_control_first"}, 0, False),
+    # The guest must hear the thesis first. A bare question reads like a form.
+    case("no thesis line -> give advice", {**OPEN, "thesis_line": ""}, 0, False),
     # A failed model call returns {}: the concierge must still answer.
     case("empty reasoning -> give advice", {}, 0, False),
 ]
