@@ -19,7 +19,10 @@ from app.services.decision_state.response_composer import compose_response
 from app.agents.recommendation.lib.knowledge_base.query_products import query_products
 from app.services.clarification.clarification_generator import generate_clarification
 from app.services.session_signal.signal_detector import SIGNAL_NAMES
-from app.services.thesis import thesis_reasoner
+from app.services.thesis import thesis_answers, thesis_reasoner
+
+# Background saves that the guest does not wait for.
+_background: set = set()
 
 
 # Layer 1 — Decision state core: what the hair needs right now
@@ -258,6 +261,18 @@ async def run_concierge_pipeline(
     delivered_states = await states_task
     strategy_payload = build_strategy_payload(profile, session_signal, env, session_intent, frozenset(delivered_states))
 
+    # Save the guest's answer to the last thesis question, also when the engine cannot use it.
+    pending = thesis_answers.take_pending(session_id)
+    if pending and messages:
+        # The save runs in the background, so the guest does not wait for it.
+        task = asyncio.create_task(asyncio.to_thread(
+            thesis_answers.save_answer, user_id, session_id, pending,
+            messages[-1].get("content", ""), strategy_payload.decision_state,
+            [k for k in SIGNAL_NAMES if signal_snapshot.get(k)],
+        ))
+        _background.add(task)               # keep a reference until the save ends
+        task.add_done_callback(_background.discard)
+
     # --- Thesis gate: the engine's path is the thesis. Ask one question that tests it ---
     if thesis_reasoner.THESIS_CLARIFY:
         reasoning, question = await thesis_reasoner.run_thesis_step(
@@ -267,6 +282,9 @@ async def run_concierge_pipeline(
             yield json.dumps({"type": "thesis", "content": reasoning}) + "\n"
         if question:
             # No advice is given on this turn, so the state is not saved as delivered.
+            thesis_answers.remember_question(
+                session_id, reasoning, question.question, [o.label for o in question.options],
+            )
             yield json.dumps({"type": "clarification", "content": question.model_dump()}) + "\n"
             return
 
