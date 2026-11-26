@@ -64,6 +64,34 @@ async def generate_json(prompt: str) -> Dict:
     return await _gemini_json(prompt)
 
 
+# ---------------------------------------------------------------------------
+# generate_reasoning_json — one call to a reasoning model, returns a dict
+# Used by: thesis_reasoner. The effort setting controls how long the model
+# thinks. A higher effort costs more tokens and makes the guest wait longer.
+# ---------------------------------------------------------------------------
+
+# o3 at low effort. Measured on 10 cases (6 from a real Emerson WhatsApp chat):
+#   gpt-5.4-mini low  9/10 agree  2.8s  ~470 output tokens, but its questions were unclear
+#   o3 low            8/10 agree  4.5s  ~560 output tokens, the clearest questions
+#   gpt-5.4 / 5.5     8/10 agree  8-11s, no gain for the wait
+#   gpt-5.4-mini medium 8/10 agree 6.9s, ~1,550 output tokens: more thinking did not help
+THESIS_MODEL  = os.getenv("THESIS_MODEL",  "o3")
+THESIS_EFFORT = os.getenv("THESIS_EFFORT", "low")
+
+
+async def generate_reasoning_json(prompt: str, model: str | None = None, effort: str | None = None) -> Dict:
+    response = await _openai_client().chat.completions.create(
+        model=model or THESIS_MODEL,
+        messages=[
+            {"role": "system", "content": "Respond with valid JSON only."},
+            {"role": "user", "content": prompt},
+        ],
+        response_format={"type": "json_object"},
+        reasoning_effort=effort or THESIS_EFFORT,
+    )
+    return json.loads(response.choices[0].message.content)
+
+
 async def _openai_json(prompt: str) -> Dict:
     client = _openai_client()
     response = await client.chat.completions.create(

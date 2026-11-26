@@ -121,6 +121,9 @@ async def advisor_chat_stream(request: AdvisorChatRequest):
                 event = json.loads(line)
                 if event.get("type") == "content":
                     full_reply += event.get("content", "")
+                elif event.get("type") == "clarification":
+                    # Save the question, so the next turn knows what the guest's answer refers to.
+                    full_reply = event["content"].get("question", "")
                 elif event.get("type") == "products":
                     shown.update(p["id"] for p in event.get("content", []) if p.get("id"))
                 yield line

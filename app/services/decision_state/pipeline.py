@@ -19,6 +19,7 @@ from app.services.decision_state.response_composer import compose_response
 from app.agents.recommendation.lib.knowledge_base.query_products import query_products
 from app.services.clarification.clarification_generator import generate_clarification
 from app.services.session_signal.signal_detector import SIGNAL_NAMES
+from app.services.thesis import thesis_reasoner
 
 
 # Layer 1 — Decision state core: what the hair needs right now
@@ -229,14 +230,31 @@ async def run_concierge_pipeline(
     signal_task = process_session_signals(user_id, session_id, messages)
     intent_task = process_session_intent(messages)
 
-    signal_snapshot, session_intent = await asyncio.gather(signal_task, intent_task)
+    if thesis_reasoner.THESIS_CLARIFY:
+        # The thesis step runs at the same time as the signal and intent steps.
+        signal_snapshot, session_intent, (reasoning, question) = await asyncio.gather(
+            signal_task, intent_task,
+            thesis_reasoner.run_thesis_step(session_id, messages, profile, env),
+        )
+    else:
+        signal_snapshot, session_intent = await asyncio.gather(signal_task, intent_task)
 
     print(f"[Pipeline] signal={signal_snapshot} | intent={session_intent}")
 
+    # --- Thesis gate: ask one question that tests the most likely cause ---
+    if thesis_reasoner.THESIS_CLARIFY:
+        if reasoning:
+            yield json.dumps({"type": "thesis", "content": reasoning}) + "\n"
+        if question:
+            states_task.cancel()
+            yield json.dumps({"type": "clarification", "content": question.model_dump()}) + "\n"
+            return
+
     # --- Clarification gate: ask if we genuinely can't read the signal ---
+    # The thesis step replaces this gate when it is on.
     no_active_signals = not any(signal_snapshot.get(k) for k in SIGNAL_NAMES)
     low_confidence = signal_snapshot.get("confidence_score", 0) < 0.5
-    if no_active_signals and low_confidence:
+    if not thesis_reasoner.THESIS_CLARIFY and no_active_signals and low_confidence:
         print("[Pipeline] Inconclusive signals — generating clarification request")
         clarification = await generate_clarification(messages)
         yield json.dumps({
