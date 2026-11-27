@@ -29,9 +29,10 @@ sys.path.append(project_root)
 from app.pinecone_config import get_pinecone_index
 from app.agents.llm_call.provider import embed
 
-async def query_products(query_text, top_k=5):
+async def query_products(query_text, top_k=5, filter=None):
     """
     Query Pinecone index for top_k most relevant products.
+    `filter` is an optional Pinecone metadata filter, for example {"category": {"$eq": "Detox"}}.
     """
     print(f"--> Querying products for: {query_text[:50]}...")
     try:
@@ -49,6 +50,7 @@ async def query_products(query_text, top_k=5):
             index.query,
             vector=query_vector,
             top_k=top_k,
+            filter=filter,
             include_metadata=True
         )
         print(f"--> Pinecone query successful, matches: {len(result.matches)}")

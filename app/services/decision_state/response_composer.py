@@ -575,6 +575,7 @@ def _build_products_section(composer_input: ResponseComposerInput) -> str:
     lines = [
         "Candidate products from the Emerson catalogue. Reference only if genuinely relevant.",
         "This is catalogue copy, not your copy. Take the facts, write your own sentences.",
+        "The list is in order of fit. The first product fits best.",
     ]
     for p in products[:limit]:
         lines.append(f"- {p.get('content', '')[:250]}")

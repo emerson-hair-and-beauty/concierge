@@ -168,14 +168,76 @@ def _rerank_products(products: list, filters, top_n: int) -> list:
     return [product for _, product in ranked[:top_n]]
 
 
-async def _fetch_candidate_products(payload, session_signal=None, shown_product_ids: set = None) -> list:
+# Emerson's curl expert sets the first products for these paths. A product name alone
+# does not make a product a clarifying product, so the rules use the catalogue category.
+_FIRST_CHOICE_PATHS = ("reset_first", "scalp_calm_first")
+_FIRST_CHOICE_FILTER = {"$or": [{"category": {"$eq": "Detox"}}, {"brand": {"$eq": "As I Am"}}]}
+
+
+def _mentions_scalp(messages: List[Dict[str, str]]) -> bool:
+    """The guest's own words tell scalp buildup from buildup on the hair."""
+    return any("scalp" in (m.get("content") or "").lower() for m in messages if m.get("role") == "user")
+
+
+def _first_choice_products(products: list, decision_state: str, scalp: bool) -> list:
+    """The expert's rules:
+    - Buildup on the hair: a Detox product that is a shampoo or cleanser, then the other Detox products.
+    - Buildup on the scalp: the As I Am Dry & Itchy Scalp Care shampoo and conditioner, then the other Detox products.
+    - A sensitive scalp: the As I Am Dry & Itchy Scalp Care shampoo and conditioner only.
+    """
+    def name(p):
+        return ((p.get("metadata") or {}).get("name") or "").lower()
+
+    def is_detox(p):
+        return (p.get("metadata") or {}).get("category") == "Detox"
+
+    def is_wash(p):
+        return "shampoo" in name(p) or "cleanser" in name(p)
+
+    detox_wash = [p for p in products if is_detox(p) and is_wash(p)]
+    detox_other = [p for p in products if is_detox(p) and not is_wash(p)]
+    scalp_care = [
+        p for p in products
+        if "dry & itchy scalp care" in name(p)
+        and ("shampoo" in name(p) or ("conditioner" in name(p) and "leave-in" not in name(p)))
+    ]
+    scalp_care.sort(key=lambda p: "shampoo" not in name(p))     # the shampoo first, then the conditioner
+
+    if decision_state == "scalp_calm_first":
+        chosen = scalp_care
+    elif scalp:
+        chosen = scalp_care + detox_other
+    else:
+        chosen = detox_wash + detox_other
+
+    # Show one size of each product. The catalogue lists some products in two sizes.
+    unique, seen = [], set()
+    for p in chosen:
+        base = name(p).split(" (")[0]
+        if base not in seen:
+            seen.add(base)
+            unique.append(p)
+    return unique
+
+
+async def _fetch_candidate_products(payload, session_signal=None, shown_product_ids: set = None, messages: list = None) -> list:
     filters = payload.product_filters
     decision_state = payload.decision_state or "balanced_routine_first"
     active_signals = [k for k in SIGNAL_NAMES if getattr(session_signal, k, False)] if session_signal else []
 
     query = _build_product_query(decision_state, active_signals, filters)
-    result = await query_products(query, top_k=15)
+    if decision_state in _FIRST_CHOICE_PATHS:
+        result, first = await asyncio.gather(
+            query_products(query, top_k=15),
+            query_products(query, top_k=30, filter=_FIRST_CHOICE_FILTER),
+        )
+        first = _first_choice_products(first.get("products", []), decision_state, _mentions_scalp(messages or []))
+    else:
+        result, first = await query_products(query, top_k=15), []
     ranked = _rerank_products(result.get("products", []), filters, top_n=15)
+    # The expert's first choices lead the list. The search fills the rest.
+    first_ids = {p.get("id") for p in first}
+    ranked = first + [p for p in ranked if p.get("id") not in first_ids]
 
     if shown_product_ids:
         fresh = [p for p in ranked if p.get("id") not in shown_product_ids]
@@ -213,6 +275,8 @@ def _product_card(product: dict) -> dict:
         "brand": metadata.get("brand") or "",
         "category": metadata.get("category") or "",
         "primary_focus": metadata.get("primary_focus") or "",
+        "url": metadata.get("product_url") or "",      # the shop page, so the website can link it
+        "image": metadata.get("image_url") or "",
     }
 
 
@@ -309,7 +373,7 @@ async def run_concierge_pipeline(
     candidate_products = []
     if delivery_plan.product_exposure != "hidden":
         yield json.dumps({"type": "status", "content": "Finding relevant products..."}) + "\n"
-        candidate_products = await _fetch_candidate_products(strategy_payload, session_signal=session_signal, shown_product_ids=shown_product_ids or set())
+        candidate_products = await _fetch_candidate_products(strategy_payload, session_signal=session_signal, shown_product_ids=shown_product_ids or set(), messages=messages)
 
     # --- Phase 5: Response Composer (LLM call, streamed) ---
     yield json.dumps({"type": "status", "content": "Composing response..."}) + "\n"

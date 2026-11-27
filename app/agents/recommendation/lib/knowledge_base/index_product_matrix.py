@@ -20,7 +20,7 @@ from app.pinecone_config import get_pinecone_index
 
 EXCEL_PATH = os.path.join(
     os.path.dirname(__file__),
-    "../../../../../Emerson Product Matrix_Master_File_Updated (1).xlsx"
+    "../../../../../Emerson Product Matrix_Merged_2026-11-27.xlsx"
 )
 
 # ---------------------------------------------------------------------------
@@ -54,6 +54,12 @@ COL = {
     "pairs_well_with":  26,
     "alternatives":     27,
     "best_seller":      28,
+    # Added by the Shopify refresh (Nov 2026). Older files do not have these columns.
+    "variant_id":       30,
+    "product_url":      31,
+    "image_url":        32,
+    "shopify_status":   33,
+    "routine_step":     34,
 }
 
 
@@ -152,12 +158,23 @@ def load_products_from_excel(path: str) -> list[dict]:
     ws = wb["Summary"]
 
     products = []
+    seen_ids = set()
     for row in ws.iter_rows(min_row=8, values_only=True):
         sku = row[COL["sku"]] if len(row) > COL["sku"] else None
         if not sku or str(sku).startswith("="):
             continue
 
         row_vals = {key: (row[idx] if len(row) > idx else None) for key, idx in COL.items()}
+        status = row_vals.get("shopify_status")
+        if status and status != "Active":
+            continue                      # guests cannot buy draft or archived products
+
+        # Some Shopify products share an SKU. Pinecone keeps one vector per id, so the
+        # second product gets the variant id too, or it would replace the first.
+        product_id = str(sku).strip()
+        if product_id in seen_ids:
+            product_id = f"{product_id}-{row_vals.get('variant_id') or len(products)}"
+        seen_ids.add(product_id)
 
         content = _build_content(row_vals)
         flags = _build_flags(row_vals)
@@ -165,7 +182,7 @@ def load_products_from_excel(path: str) -> list[dict]:
         density_list = _normalise_density(str(row_vals.get("density") or "All"))
 
         products.append({
-            "id":      str(sku).strip(),
+            "id":      product_id,
             "content": content,
             "metadata": {
                 "content":       content,
@@ -178,6 +195,9 @@ def load_products_from_excel(path: str) -> list[dict]:
                 "porosity":      porosity_list,
                 "density":       density_list,
                 "flags":         flags,
+                "product_url":   str(row_vals.get("product_url") or ""),
+                "image_url":     str(row_vals.get("image_url") or ""),
+                "routine_step":  str(row_vals.get("routine_step") or ""),
             }
         })
 
