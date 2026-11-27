@@ -80,6 +80,8 @@ def _build_profile(metadata: Dict) -> ProfileState:
         density=density,
         humidity_response=metadata.get("humidity_response"),
         hair_goals=metadata.get("hair_goals") or [],
+        scalp_state=metadata.get("scalp"),
+        chemical_treatment=metadata.get("damage"),
     )
 
 

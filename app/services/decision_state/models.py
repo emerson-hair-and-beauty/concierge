@@ -17,6 +17,7 @@ class ProfileState(BaseModel):
     scalp_state: Optional[str] = None       # dry / normal / oily / sensitive
     humidity_response: Optional[str] = None # high / moderate / low (sensitivity)
     hair_goals: Optional[List[str]] = None  # e.g. ["definition", "growth"]
+    chemical_treatment: Optional[str] = None  # onboarding answer, e.g. "Chemically Treated"
     routine_flags: List[str] = []           # active flags from lookup tables
                                              # e.g. frizz_control, seal_moisture, strong_hold
 

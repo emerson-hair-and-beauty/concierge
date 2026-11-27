@@ -88,6 +88,10 @@ SAVED PROFILE (from onboarding; "Unspecified" means unknown, and medium porosity
 - porosity: {porosity}
 - density: {density}
 - hard water where they live: {hard_water}
+- chemically treated (colour, relaxer, perm): {chemical}
+- scalp type: {scalp}
+- how the hair reacts to humidity: {humidity}
+- hair goals: {goals}
 
 CONVERSATION (oldest first):
 {conversation}
@@ -101,7 +105,7 @@ the path name exactly as written.
 thesis and false under the rival. Prefer lifestyle and routine facts: how often they \
 wash, the products they use, exercise or swimming, time in air conditioning, heat \
 styling, protective styles.
-3. already_known: facts the guest already gave. Never ask about these again.
+3. already_known: facts the guest already gave, and every known fact in SAVED PROFILE. Never ask about these. Use them: for example, if the profile says the hair is chemically treated, do not ask about colour or chemical work; treat it as known. Choose the deciding fact among the things that are still unknown.
 4. confidence: "high" if the conversation already rules out the rival, "medium" if the \
 thesis is likely but the rival is still open, "low" if you cannot tell.
 5. decision: "ask" or "advise". Picture an expert at the Emerson counter.
@@ -159,6 +163,10 @@ def build_prompt(
         porosity=profile.porosity,
         density=profile.density,
         hard_water="yes" if env.hard_water else "unknown",
+        chemical=profile.chemical_treatment or "unknown",
+        scalp=profile.scalp_state or "unknown",
+        humidity=profile.humidity_response or "unknown",
+        goals=", ".join(profile.hair_goals) if profile.hair_goals else "unknown",
         conversation=conversation,
         asked=asked,
         max_q=MAX_QUESTIONS,
