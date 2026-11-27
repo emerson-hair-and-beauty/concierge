@@ -14,6 +14,7 @@ from app.services.decision_state.decision_state_history import (
     get_session_decision_states,
     log_decision_state,
 )
+from app.services.decision_state import stock_check
 from app.services.decision_state.jte import resolve_delivery_plan
 from app.services.decision_state.response_composer import compose_response
 from app.agents.recommendation.lib.knowledge_base.query_products import query_products
@@ -239,11 +240,13 @@ async def _fetch_candidate_products(payload, session_signal=None, shown_product_
     first_ids = {p.get("id") for p in first}
     ranked = first + [p for p in ranked if p.get("id") not in first_ids]
 
+    pool = ranked
     if shown_product_ids:
         fresh = [p for p in ranked if p.get("id") not in shown_product_ids]
-        return fresh[:5] if len(fresh) >= 3 else ranked[:5]
+        pool = fresh if len(fresh) >= 3 else ranked
 
-    return ranked[:5]
+    # Check more than 5, so a sold-out product has a replacement.
+    return (await stock_check.in_stock(pool[:10]))[:5]
 
 
 def _normalise(text: str) -> str:
