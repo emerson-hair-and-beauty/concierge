@@ -51,6 +51,26 @@ RIVAL_PATHS = ("repair_first", "reset_first", "scalp_calm_first", "hold_and_defi
 # concierge gives advice. It lives in memory, like the advisor chat history.
 _questions_in_a_row: Dict[str, int] = {}
 
+# The lead-in for the first question: the guest's symptoms and the two causes.
+_FIRST_LEAD_IN = """9. lead_in: ONE sentence an expert says before the question. It names the guest's \
+symptoms and the two causes that usually give them: the THESIS first, then the rival. \
+Pattern: "<their symptoms> usually comes from one of two things: <thesis cause>, or \
+<rival cause>."
+   - Use every symptom in "symptoms", and no symptom that is not in it. Never add a \
+feeling or a symptom the guest did not say (for example "irritated", "uncomfortable", \
+"itchy").
+   - Describe each cause as a habit, a product, or something on the hair. Never say \
+that something is wrong with the guest's skin or body, and never tell the guest what \
+their hair or scalp "is".
+   - Never use hedge words: "maybe", "might", "could", "possibly", "perhaps", "I think", \
+"my guess", "it sounds like", "it seems", "can", "may", "suggests", "often". No technical \nterms."""
+
+# The lead-in for a follow-up question: what the last answer showed. The two causes
+# are already on screen, so the concierge does not repeat them.
+_FOLLOW_UP_LEAD_IN = """9. lead_in: the concierge already asked a question, and the guest answered it. Do NOT repeat the symptoms or the two causes. Write ONE short sentence that says what the guest's last answer shows, in plain expert words. Example: "Itching that builds up over a few days points to residue." Then the question follows.
+   - Use only what the guest said. Never add a feeling or a symptom.
+   - Never use hedge words: "maybe", "might", "could", "possibly", "perhaps", "I think", "my guess", "it sounds like", "it seems", "can", "may", "suggests", "often". No technical \nterms."""
+
 _PROMPT = """\
 You write for Emerson, a hair care concierge for curly and textured hair in the GCC. \
 The decision engine already chose the most likely cause. That cause is the THESIS. \
@@ -97,18 +117,7 @@ Experts ask before they recommend.
 "just tell me", "no questions", or they repeat a request for a recommendation after \
 the concierge already asked. Asking for help is not impatience.
 8. symptoms: the symptoms the guest said, in their own words. Nothing else.
-9. lead_in: ONE sentence an expert says before the question. It names the guest's \
-symptoms and the two causes that usually give them: the THESIS first, then the rival. \
-Pattern: "<their symptoms> usually comes from one of two things: <thesis cause>, or \
-<rival cause>."
-   - Use every symptom in "symptoms", and no symptom that is not in it. Never add a \
-feeling or a symptom the guest did not say (for example "irritated", "uncomfortable", \
-"itchy").
-   - Describe each cause as a habit, a product, or something on the hair. Never say \
-that something is wrong with the guest's skin or body, and never tell the guest what \
-their hair or scalp "is".
-   - Never use hedge words: "maybe", "might", "could", "possibly", "perhaps", "I think", \
-"my guess", "it sounds like", "it seems". No technical terms.
+{lead_in_rule}
    NO SYMPTOMS: if "symptoms" is empty and the guest's message is about their hair, \
 there is nothing to test yet. Then decision is "ask", lead_in is "", the question asks \
 what they notice about their hair in one warm, open sentence, and the options are 2 to \
@@ -153,6 +162,7 @@ def build_prompt(
         conversation=conversation,
         asked=asked,
         max_q=MAX_QUESTIONS,
+        lead_in_rule=_FOLLOW_UP_LEAD_IN if asked else _FIRST_LEAD_IN,
     )
 
 
