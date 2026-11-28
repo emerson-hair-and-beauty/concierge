@@ -72,7 +72,7 @@ _CTA_INSTRUCTIONS = {
 
 _EXPOSURE_INSTRUCTIONS = {
     "hidden":      "Do not mention any products by name.",
-    "selective":   "You may reference one product only if it is directly relevant and clearly the right fit.",
+    "selective":   "You may reference up to three products, one per routine step, only where each is directly relevant and clearly the right fit.",
     "routine_led": "Introduce products as part of a step plan, not as standalone recommendations.",
     "direct":      "Name the right products confidently and explain briefly why each one fits.",
 }
@@ -568,7 +568,7 @@ def _build_products_section(composer_input: ResponseComposerInput) -> str:
     if plan.product_exposure == "hidden" or not products:
         return ""
 
-    limit = 1 if plan.product_exposure == "selective" else len(products)
+    limit = 3 if plan.product_exposure == "selective" else len(products)
     # Catalogue entries are marketing copy, so this is the one block that arrives
     # as prose we do not control. Label it clearly: without this the model tends
     # to lift product blurbs straight into the reply.

@@ -30,6 +30,7 @@ class SessionSignal(BaseModel):
     buildup_present: bool = False
     coated_feel: bool = False
     scalp_sensitivity: bool = False          # itchy/flaky/irritated scalp — not buildup, sensitivity
+    reset_done_recent: bool = False          # the guest already did a clarifying or chelating wash recently
     confidence_score: float = 0.0
     evidence_quote: str = ""
     fallback_used: bool = False

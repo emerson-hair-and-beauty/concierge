@@ -88,6 +88,36 @@ class HardOverrideTests(unittest.TestCase):
         # env for an unrelated test: ENV_HW routes everything to reset_first.
         self.assertEqual(state_for(P3C, signal(), ENV_HW, intent()), "reset_first")
 
+    def test_recent_reset_defeats_buildup_signals(self):
+        # The guest already clarified recently. A reset-first answer would repeat
+        # what they did, so the profile ladder takes over instead.
+        for name in ("buildup_present", "coated_feel", "absorption_blocked"):
+            with self.subTest(trigger=name):
+                self.assertEqual(
+                    state_for(P3C, signal(**{name: True, "reset_done_recent": True}), ENV_MED, intent()),
+                    "balanced_routine_first",
+                )
+
+    def test_recent_reset_defeats_hard_water(self):
+        self.assertEqual(
+            state_for(P3C, signal(reset_done_recent=True), ENV_HW, intent()),
+            "balanced_routine_first",
+        )
+
+    def test_recent_reset_does_not_block_breakage(self):
+        # Structural damage still wins. The guest's clarifying wash does not
+        # repair a snapping strand.
+        self.assertEqual(
+            state_for(P3C, signal(reset_done_recent=True, breakage_active=True), ENV_MED, intent()),
+            "repair_first",
+        )
+
+    def test_recent_reset_does_not_block_scalp(self):
+        self.assertEqual(
+            state_for(P3C, signal(reset_done_recent=True, scalp_sensitivity=True), ENV_MED, intent()),
+            "scalp_calm_first",
+        )
+
     def test_low_elasticity_yields_to_high_humidity(self):
         # Elasticity is structural; climate-driven frizz is not. The branch is
         # cancelled by high humidity from *either* source.

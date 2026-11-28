@@ -46,8 +46,11 @@ def _resolve_hard_override(
         return "scalp_calm_first"
 
     # Reset signals: waxy coat, buildup, blocked absorption, hard water
-    # These win even on a low-elasticity profile — you can't repair through a coat
-    if (
+    # These win even on a low-elasticity profile — you can't repair through a coat.
+    # One exception: the guest already did the reset wash recently. Then the
+    # reset step is done, and repeating it ignores their words. Fall through to
+    # the secondary ladder, where porosity and density shape the plan.
+    if not signal.reset_done_recent and (
         signal.buildup_present
         or signal.coated_feel
         or signal.absorption_blocked
