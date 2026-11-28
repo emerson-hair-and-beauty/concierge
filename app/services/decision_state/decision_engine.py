@@ -36,6 +36,7 @@ def _resolve_hard_override(
     signal: SessionSignal,
     env: EnvironmentalContext,
     profile: ProfileState,
+    delivered_states: frozenset[str] = frozenset(),
 ) -> str | None:
     # Active breakage always takes top priority — structural damage first
     if signal.breakage_active:
@@ -47,10 +48,9 @@ def _resolve_hard_override(
 
     # Reset signals: waxy coat, buildup, blocked absorption, hard water
     # These win even on a low-elasticity profile — you can't repair through a coat.
-    # One exception: the guest already did the reset wash recently. Then the
-    # reset step is done, and repeating it ignores their words. Fall through to
-    # the secondary ladder, where porosity and density shape the plan.
-    if not signal.reset_done_recent and (
+    # The session loop decides the repeat: once the reset was delivered, later
+    # turns progress to the hierarchy instead of repeating the same diagnosis.
+    if "reset_first" not in delivered_states and (
         signal.buildup_present
         or signal.coated_feel
         or signal.absorption_blocked
@@ -336,7 +336,7 @@ def build_strategy_payload(
     delivered_states: frozenset[str] = frozenset(),
 ) -> StrategyPayload:
     # Step 1 — hard overrides
-    decision_state = _resolve_hard_override(signal, env, profile)
+    decision_state = _resolve_hard_override(signal, env, profile, delivered_states)
 
     # Step 3 — secondary states (only if no hard override)
     if decision_state is None:

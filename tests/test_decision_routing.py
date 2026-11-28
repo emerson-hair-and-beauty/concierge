@@ -88,33 +88,33 @@ class HardOverrideTests(unittest.TestCase):
         # env for an unrelated test: ENV_HW routes everything to reset_first.
         self.assertEqual(state_for(P3C, signal(), ENV_HW, intent()), "reset_first")
 
-    def test_recent_reset_defeats_buildup_signals(self):
-        # The guest already clarified recently. A reset-first answer would repeat
-        # what they did, so the profile ladder takes over instead.
+    def test_delivered_reset_defeats_buildup_signals(self):
+        # The reset was already taught this session. The session loop progresses
+        # to the hierarchy instead of repeating the same diagnosis.
         for name in ("buildup_present", "coated_feel", "absorption_blocked"):
             with self.subTest(trigger=name):
                 self.assertEqual(
-                    state_for(P3C, signal(**{name: True, "reset_done_recent": True}), ENV_MED, intent()),
+                    state_for(P3C, signal(**{name: True}), ENV_MED, intent(), frozenset({"reset_first"})),
                     "balanced_routine_first",
                 )
 
-    def test_recent_reset_defeats_hard_water(self):
+    def test_delivered_reset_defeats_hard_water(self):
         self.assertEqual(
-            state_for(P3C, signal(reset_done_recent=True), ENV_HW, intent()),
+            state_for(P3C, signal(), ENV_HW, intent(), frozenset({"reset_first"})),
             "balanced_routine_first",
         )
 
-    def test_recent_reset_does_not_block_breakage(self):
-        # Structural damage still wins. The guest's clarifying wash does not
-        # repair a snapping strand.
+    def test_delivered_reset_does_not_block_breakage(self):
+        # Structural damage still wins. A past reset turn does not repair a
+        # snapping strand.
         self.assertEqual(
-            state_for(P3C, signal(reset_done_recent=True, breakage_active=True), ENV_MED, intent()),
+            state_for(P3C, signal(breakage_active=True), ENV_MED, intent(), frozenset({"reset_first"})),
             "repair_first",
         )
 
-    def test_recent_reset_does_not_block_scalp(self):
+    def test_delivered_reset_does_not_block_scalp(self):
         self.assertEqual(
-            state_for(P3C, signal(reset_done_recent=True, scalp_sensitivity=True), ENV_MED, intent()),
+            state_for(P3C, signal(scalp_sensitivity=True), ENV_MED, intent(), frozenset({"reset_first"})),
             "scalp_calm_first",
         )
 

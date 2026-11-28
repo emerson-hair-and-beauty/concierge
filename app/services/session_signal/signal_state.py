@@ -13,7 +13,6 @@ SIGNAL_NAMES = [
     "buildup_present",
     "coated_feel",
     "scalp_sensitivity",
-    "reset_done_recent",
 ]
 
 

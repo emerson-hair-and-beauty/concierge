@@ -10,7 +10,6 @@ SIGNAL_NAMES = [
     "buildup_present",
     "coated_feel",
     "scalp_sensitivity",
-    "reset_done_recent",
 ]
 
 _DETECTION_PROMPT = """\
@@ -43,10 +42,6 @@ coated_feel: A waxy, plastic-like, or "filmy" texture on the strand, often from 
 scalp_sensitivity: Scalp is irritated, itchy, tender, flaky, or reactive — due to sensitivity, dryness, or an adverse reaction to a product, NOT from product buildup. Focuses on scalp comfort and barrier health rather than buildup removal.
   Example phrases: "my scalp is itchy", "flaky scalp", "scalp irritation", "scalp is sensitive", "scalp hurts", "tender scalp after styling", "scalp reacts to products", "my child has a sensitive scalp", "scalp dryness", "scalp is inflamed", "scalp burns", "scalp feels sore", "dandruff", "itchy after washing", "scalp feels irritated by my conditioner"
 
-reset_done_recent: The user says they already did a clarifying, chelating, or deep-cleansing wash recently (within the last few weeks) and their current problem came after it. The reset step already happened. A recommendation that repeats it would ignore what the user already tried.
-  Example phrases: "I clarified last week", "I used a clarifying shampoo and it didn't help", "I chelated and nothing changed", "I did a detox wash but the problem is still there"
-  DO NOT flag for: the user asking whether they should clarify, a clarifying wash they did months ago as old history, or buildup descriptions with no mention of a reset wash they already did.
-
 Conversation:
 {conversation}"""
 
@@ -76,9 +71,6 @@ coated_feel: A waxy or filmy layer on the strand blocking moisture.
 
 scalp_sensitivity: Scalp is irritated or reactive — not from buildup but from sensitivity or adverse reaction.
   Implied by: scalp discomfort, itching, or flaking after product use; mention of a sensitive or reactive scalp; child or gentle-care context where scalp is the concern; scalp soreness that is not linked to heavy product use.
-
-reset_done_recent: The user already did a clarifying, chelating, or deep-cleansing wash recently and the problem remains.
-  Implied by: the user naming a clarifying, chelating, or detox wash they already did in the last few weeks. NOT implied by: the user asking whether to do one, or a wash from months ago.
 
 Only flag a signal if you can reason a clear path from what the user said to what the signal describes. If nothing can be reasonably inferred, set all to false and reflect that in a low confidence score.
 

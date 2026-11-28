@@ -734,7 +734,6 @@ else:
                 "hold_loss":          "Curls losing definition",
                 "coated_feel":        "Waxy or coated texture",
                 "scalp_sensitivity":  "Scalp sensitivity / irritation",
-                "reset_done_recent":  "Already clarified recently",
             }
 
             cols = st.columns(len(signal_map))
